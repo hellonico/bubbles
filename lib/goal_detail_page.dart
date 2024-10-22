@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'add_task_dialog.dart';
 import 'edit_task_page.dart';
 import 'goal.dart';
+import 'mardown_view_page.dart';
 
 class GoalDetailPage extends StatefulWidget {
   final Goal goal;
@@ -99,7 +100,22 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
         }
       },
       child: Scaffold(
-        appBar: AppBar(title: Text(widget.goal.name)),
+        appBar: AppBar(
+          title: Text(widget.goal.name),
+          // Add tap gesture to navigate to markdown view
+          actions: [
+            IconButton(
+              icon: Icon(Icons.text_format),
+              onPressed: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) => MarkdownViewPage(goal: widget.goal),
+                  ),
+                );
+              },
+            ),
+          ],
+        ),
         body: ListView.builder(
           itemCount: widget.goal.tasks.length,
           itemBuilder: (context, index) {

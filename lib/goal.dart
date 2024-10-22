@@ -5,13 +5,16 @@ class Task {
   bool isCompleted;
   DateTime? completedAt;
 
-  Task({required this.title, this.isCompleted = false, this.completedAt});
+  var description;
+
+  Task({required this.title, this.isCompleted = false, this.completedAt, this.description});
 
   // Convert Task to JSON
   Map<String, dynamic> toJson() => {
     'title': title,
     'isCompleted': isCompleted,
     'completedAt': completedAt?.toIso8601String(),
+    'description' : description
   };
 
   // Create Task from JSON
@@ -19,6 +22,7 @@ class Task {
     return Task(
       title: json['title'],
       isCompleted: json['isCompleted'],
+      description: json['description'],
       completedAt: json['completedAt'] != null
           ? DateTime.parse(json['completedAt'])
           : null,

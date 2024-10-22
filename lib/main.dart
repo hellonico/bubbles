@@ -66,12 +66,14 @@ class _MainPageState extends State<MainPage> {
       goal.name = newName;
       goal.color = newColor;
     });
+    _saveGoals(); // Call save function to persist changes
   }
 
   void deleteGoal(Goal goal) {
     setState(() {
       goals.remove(goal); // Remove the goal from the list
     });
+    _saveGoals();
   }
 
   void refreshGoals() {

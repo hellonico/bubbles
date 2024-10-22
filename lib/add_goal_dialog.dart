@@ -40,7 +40,7 @@ void showGoalDialog({
 
   // Set initial color to the first color in the list if not provided
   Color selectedColor = initialColor ?? pastelColors[0];
-  selectedColor = (pastelColors.contains(selectedColor) ? initialColor : pastelColors[0])!;
+//  selectedColor = (pastelColors.contains(selectedColor) ? initialColor : pastelColors[0])!;
 
   showDialog(
     context: context,

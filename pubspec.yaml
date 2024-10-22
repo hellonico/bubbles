@@ -33,6 +33,7 @@ dependencies:
   shared_preferences: ^2.3.2 # Add this dependency
   intl: ^0.18.0 # Add this line
   flutter_markdown: ^0.6.0 # Check for the latest version
+  url_launcher: ^6.0.20 # Check for the latest version
 
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.

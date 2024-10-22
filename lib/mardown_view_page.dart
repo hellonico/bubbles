@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'goal.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 
@@ -15,6 +16,11 @@ class MarkdownViewPage extends StatelessWidget {
         padding: const EdgeInsets.all(16.0),
         child: Markdown(
           data: _generateMarkdownData(),
+          onTapLink: (text, href, title) {
+            if (href != null) {
+              _launchURL(href); // Handle the link tap
+            }
+          },
         ),
       ),
     );
@@ -36,6 +42,17 @@ class MarkdownViewPage extends StatelessWidget {
       markdownBuffer.writeln(); // Blank line for separation
     }
     return markdownBuffer.toString();
+  }
+
+
+  // Function to launch URLs
+  void _launchURL(String url) async {
+    final Uri uri = Uri.parse(url);
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri);
+    } else {
+      throw 'Could not launch $url';
+    }
   }
 
 }

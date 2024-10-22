@@ -18,6 +18,7 @@ class GoalDetailPage extends StatefulWidget {
 }
 
 class _GoalDetailPageState extends State<GoalDetailPage> {
+
   void addTask(String taskName) {
     setState(() {
       widget.goal.tasks.add(Task(title: taskName));
@@ -74,6 +75,7 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
               task.description = updatedDescription;
             });
             _saveTaskToLocal(task);
+            widget.refreshGoals();
           },
         ),
       ),

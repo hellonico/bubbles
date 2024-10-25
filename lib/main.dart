@@ -148,13 +148,9 @@ class _MainPageState extends State<MainPage> {
       );
     }
   }
-
   @override
   Widget build(BuildContext context) {
-    // Get the filtered goals based on selected colors and the 'showCompletedGoals' flag
     List<Goal> filteredGoals = getFilteredGoals();
-
-    // Only include the colors of the visible goals after filtering
     List<Color> visibleGoalColors = filteredGoals.map((goal) => goal.color).toSet().toList();
 
     return Scaffold(
@@ -164,7 +160,6 @@ class _MainPageState extends State<MainPage> {
           children: [
             const Text('Life Goals'),
             Row(
-              // Only show color icons for colors that are present in the filtered (visible) goals
               children: visibleGoalColors.map((color) {
                 bool isSelected = selectedColors.contains(color);
                 return GestureDetector(
@@ -199,11 +194,33 @@ class _MainPageState extends State<MainPage> {
       body: ReorderableListView(
         onReorder: (int oldIndex, int newIndex) {
           setState(() {
+            // If reordering down, we subtract 1 from the newIndex to account for the "before" position
             if (newIndex > oldIndex) newIndex -= 1;
-            final goal = goals.removeAt(oldIndex);
-            goals.insert(newIndex, goal);
+
+            // Get the goal being reordered from the filtered list
+            final movedGoal = filteredGoals[oldIndex];
+
+            // Find the index of the goal in the original list
+            final originalOldIndex = goals.indexOf(movedGoal);
+
+            // If moving up, find the target index in the original list for the newIndex in filtered list
+            if (newIndex <= oldIndex) {
+              final newFilteredGoal = filteredGoals[newIndex];
+              final originalNewIndex = goals.indexOf(newFilteredGoal);
+              // Move the goal in the original list
+              goals.removeAt(originalOldIndex);
+              goals.insert(originalNewIndex, movedGoal);
+            }
+            // If moving down, find the target index in the original list for the newIndex in filtered list
+            else {
+              final newFilteredGoal = filteredGoals[newIndex];
+              final originalNewIndex = goals.indexOf(newFilteredGoal) + 1; // Insert after in original
+              // Move the goal in the original list
+              goals.removeAt(originalOldIndex);
+              goals.insert(originalNewIndex, movedGoal);
+            }
           });
-          _saveGoals();
+          _saveGoals(); // Save reordered goals
         },
         children: List.generate(filteredGoals.length, (index) {
           Goal goal = filteredGoals[index];
@@ -269,6 +286,7 @@ class _MainPageState extends State<MainPage> {
       ),
     );
   }
+
 }
 
 void main() {

@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'dart:convert'; // For JSON encoding and decoding
+import 'dart:convert';
+import 'dart:io'; // For File
+import 'package:path_provider/path_provider.dart'; // For path_provider
+import 'package:share_plus/share_plus.dart'; // For sharing files
+import 'package:file_picker/file_picker.dart'; // For file picking
 import 'goal.dart';
 import 'goal_card.dart';
 import 'goal_detail_page.dart';
@@ -28,7 +32,7 @@ class MainPage extends StatefulWidget {
 
 class _MainPageState extends State<MainPage> {
   List<Goal> goals = [];
-  Set<Color> selectedColors = {}; // Set to keep track of selected colors
+  Set<Color> selectedColors = {};
 
   @override
   void initState() {
@@ -36,7 +40,6 @@ class _MainPageState extends State<MainPage> {
     _loadGoals();
   }
 
-  // Load goals from SharedPreferences
   Future<void> _loadGoals() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     String? goalsData = prefs.getString('goals');
@@ -48,7 +51,6 @@ class _MainPageState extends State<MainPage> {
     }
   }
 
-  // Save goals to SharedPreferences
   Future<void> _saveGoals() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     String jsonData = jsonEncode(goals.map((goal) => goal.toJson()).toList());
@@ -59,7 +61,7 @@ class _MainPageState extends State<MainPage> {
     setState(() {
       goals.add(Goal(name: name, color: color, tasks: []));
     });
-    _saveGoals(); // Save goals after adding
+    _saveGoals();
   }
 
   void editGoal(Goal goal, String newName, Color newColor) {
@@ -67,30 +69,81 @@ class _MainPageState extends State<MainPage> {
       goal.name = newName;
       goal.color = newColor;
     });
-    _saveGoals(); // Call save function to persist changes
+    _saveGoals();
   }
 
   void deleteGoal(Goal goal) {
     setState(() {
-      goals.remove(goal); // Remove the goal from the list
+      goals.remove(goal);
     });
     _saveGoals();
   }
 
   void refreshGoals() {
     setState(() {});
-    _saveGoals(); // Save goals after refreshing
+    _saveGoals();
   }
 
-  // Filter goals based on selected colors
   List<Goal> getFilteredGoals() {
     if (selectedColors.isEmpty) return goals;
     return goals.where((goal) => selectedColors.contains(goal.color)).toList();
   }
 
+  Future<void> exportGoals() async {
+    String jsonData = jsonEncode(goals.map((goal) => goal.toJson()).toList());
+    Share.share(jsonData, subject: 'Check out my life goals!');
+  }
+
+  Future<void> importGoals() async {
+    FilePickerResult? result = await FilePicker.platform.pickFiles(type: FileType.custom, allowedExtensions: ['txt','json']);
+
+    if (result != null) {
+      File file = File(result.files.single.path!);
+      String fileContent = await file.readAsString();
+
+      // Parse JSON and show a dialog for replacing or adding
+      List<dynamic> jsonData = jsonDecode(fileContent);
+      showDialog(
+        context: context,
+        builder: (context) {
+          return AlertDialog(
+            title: const Text('Import Goals'),
+            content: const Text('Do you want to replace current goals or add them?'),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  setState(() {
+                    goals = jsonData.map((goalJson) => Goal.fromJson(goalJson)).toList();
+                  });
+                  _saveGoals();
+                  Navigator.pop(context);
+                },
+                child: const Text('Replace'),
+              ),
+              // TextButton(
+              //   onPressed: () {
+              //     setState(() {
+              //       goals.addAll(jsonData.map((goalJson) => Goal.fromJson(goalJson)));
+              //     });
+              //     _saveGoals();
+              //     Navigator.pop(context);
+              //   },
+              //   child: const Text('Add'),
+              // ),
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Cancel'),
+              ),
+            ],
+          );
+        },
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    List<Color> goalColors = goals.map((goal) => goal.color).toSet().toList(); // Extract unique colors
+    List<Color> goalColors = goals.map((goal) => goal.color).toSet().toList();
 
     return Scaffold(
       appBar: AppBar(
@@ -104,7 +157,6 @@ class _MainPageState extends State<MainPage> {
                 return GestureDetector(
                   onTap: () {
                     setState(() {
-                      // Toggle color selection
                       if (isSelected) {
                         selectedColors.remove(color);
                       } else {
@@ -138,7 +190,7 @@ class _MainPageState extends State<MainPage> {
             final goal = goals.removeAt(oldIndex);
             goals.insert(newIndex, goal);
           });
-          _saveGoals(); // Save goals after reordering
+          _saveGoals();
         },
         children: List.generate(getFilteredGoals().length, (index) {
           Goal goal = getFilteredGoals()[index];
@@ -149,21 +201,39 @@ class _MainPageState extends State<MainPage> {
               MaterialPageRoute(
                 builder: (context) => GoalDetailPage(
                   goal: goal,
-                  refreshGoals: refreshGoals, // Passing refresh callback
+                  refreshGoals: refreshGoals,
                 ),
               ),
             ),
             child: GoalCard(
               goal: goal,
-              onEditGoal: (newName, newColor) => editGoal(goal, newName, newColor), // Edit goal callback
-              onDeleteGoal: () => deleteGoal(goal), // Delete goal callback
+              onEditGoal: (newName, newColor) => editGoal(goal, newName, newColor),
+              onDeleteGoal: () => deleteGoal(goal),
             ),
           );
         }),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => showAddGoalDialog(context, addGoal),
-        child: Icon(Icons.add),
+      floatingActionButton: Column(
+        mainAxisAlignment: MainAxisAlignment.end,
+        children: [
+          FloatingActionButton(
+            onPressed: () => importGoals(),
+            child: Icon(Icons.download),
+            tooltip: 'Import Goals',
+          ),
+          SizedBox(height: 16), // Space between buttons
+          FloatingActionButton(
+            onPressed: () => exportGoals(),
+            child: Icon(Icons.upload_file),
+            tooltip: 'Export Goals',
+          ),
+          SizedBox(height: 16), // Space between buttons
+          FloatingActionButton(
+            onPressed: () => showAddGoalDialog(context, addGoal),
+            child: Icon(Icons.add),
+            tooltip: 'Add Goal',
+          ),
+        ],
       ),
     );
   }

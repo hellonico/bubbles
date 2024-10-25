@@ -151,7 +151,9 @@ class _MainPageState extends State<MainPage> {
   @override
   Widget build(BuildContext context) {
     List<Goal> filteredGoals = getFilteredGoals();
-    List<Color> visibleGoalColors = filteredGoals.map((goal) => goal.color).toSet().toList();
+    List<Color> visibleGoalColors = showCompletedGoals
+        ? goals.map((goal) => goal.color).toSet().toList()  // Show all goal colors if completed goals are visible
+        : goals.where((goal) => !isGoalCompleted(goal)).map((goal) => goal.color).toSet().toList();  // Show only non-completed goal colors
 
     return Scaffold(
       appBar: AppBar(

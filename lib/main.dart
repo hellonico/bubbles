@@ -12,7 +12,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Goals App',
+      title: 'Life Goals App',
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
@@ -28,6 +28,7 @@ class MainPage extends StatefulWidget {
 
 class _MainPageState extends State<MainPage> {
   List<Goal> goals = [];
+  Set<Color> selectedColors = {}; // Set to keep track of selected colors
 
   @override
   void initState() {
@@ -81,10 +82,55 @@ class _MainPageState extends State<MainPage> {
     _saveGoals(); // Save goals after refreshing
   }
 
+  // Filter goals based on selected colors
+  List<Goal> getFilteredGoals() {
+    if (selectedColors.isEmpty) return goals;
+    return goals.where((goal) => selectedColors.contains(goal.color)).toList();
+  }
+
   @override
   Widget build(BuildContext context) {
+    List<Color> goalColors = goals.map((goal) => goal.color).toSet().toList(); // Extract unique colors
+
     return Scaffold(
-      appBar: AppBar(title: Text('Goals')),
+      appBar: AppBar(
+        title: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text('Life Goals'),
+            Row(
+              children: goalColors.map((color) {
+                bool isSelected = selectedColors.contains(color);
+                return GestureDetector(
+                  onTap: () {
+                    setState(() {
+                      // Toggle color selection
+                      if (isSelected) {
+                        selectedColors.remove(color);
+                      } else {
+                        selectedColors.add(color);
+                      }
+                    });
+                  },
+                  child: Container(
+                    margin: EdgeInsets.symmetric(horizontal: 4.0),
+                    width: 30,
+                    height: 30,
+                    decoration: BoxDecoration(
+                      color: color,
+                      border: Border.all(
+                        color: isSelected ? Colors.black : Colors.transparent,
+                        width: 2,
+                      ),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+          ],
+        ),
+      ),
       body: ReorderableListView(
         onReorder: (int oldIndex, int newIndex) {
           setState(() {
@@ -94,8 +140,8 @@ class _MainPageState extends State<MainPage> {
           });
           _saveGoals(); // Save goals after reordering
         },
-        children: List.generate(goals.length, (index) {
-          Goal goal = goals[index];
+        children: List.generate(getFilteredGoals().length, (index) {
+          Goal goal = getFilteredGoals()[index];
           return GestureDetector(
             key: ValueKey(goal.name),
             onTap: () => Navigator.push(
@@ -107,12 +153,11 @@ class _MainPageState extends State<MainPage> {
                 ),
               ),
             ),
-              child: GoalCard(
-                goal: goal,
-                onEditGoal: (newName, newColor) => editGoal(goal, newName, newColor), // Edit goal callback
-                onDeleteGoal: () => deleteGoal(goal), // Delete goal callback
-              )
-
+            child: GoalCard(
+              goal: goal,
+              onEditGoal: (newName, newColor) => editGoal(goal, newName, newColor), // Edit goal callback
+              onDeleteGoal: () => deleteGoal(goal), // Delete goal callback
+            ),
           );
         }),
       ),

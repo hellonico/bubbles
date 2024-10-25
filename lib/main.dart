@@ -151,7 +151,11 @@ class _MainPageState extends State<MainPage> {
 
   @override
   Widget build(BuildContext context) {
-    List<Color> goalColors = goals.map((goal) => goal.color).toSet().toList();
+    // Get the filtered goals based on selected colors and the 'showCompletedGoals' flag
+    List<Goal> filteredGoals = getFilteredGoals();
+
+    // Only include the colors of the visible goals after filtering
+    List<Color> visibleGoalColors = filteredGoals.map((goal) => goal.color).toSet().toList();
 
     return Scaffold(
       appBar: AppBar(
@@ -160,7 +164,8 @@ class _MainPageState extends State<MainPage> {
           children: [
             const Text('Life Goals'),
             Row(
-              children: goalColors.map((color) {
+              // Only show color icons for colors that are present in the filtered (visible) goals
+              children: visibleGoalColors.map((color) {
                 bool isSelected = selectedColors.contains(color);
                 return GestureDetector(
                   onTap: () {
@@ -173,7 +178,7 @@ class _MainPageState extends State<MainPage> {
                     });
                   },
                   child: Container(
-                    margin: EdgeInsets.symmetric(horizontal: 4.0),
+                    margin: const EdgeInsets.symmetric(horizontal: 4.0),
                     width: 30,
                     height: 30,
                     decoration: BoxDecoration(
@@ -200,8 +205,8 @@ class _MainPageState extends State<MainPage> {
           });
           _saveGoals();
         },
-        children: List.generate(getFilteredGoals().length, (index) {
-          Goal goal = getFilteredGoals()[index];
+        children: List.generate(filteredGoals.length, (index) {
+          Goal goal = filteredGoals[index];
           return GestureDetector(
             key: ValueKey(goal.name),
             onTap: () => Navigator.push(

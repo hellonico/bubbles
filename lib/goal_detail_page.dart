@@ -20,7 +20,7 @@ class GoalDetailPage extends StatefulWidget {
 
 class _GoalDetailPageState extends State<GoalDetailPage> {
   bool showStarredTasks = false; // State for showing starred tasks
-  bool showCompletedTasks = true; // State for showing completed tasks
+  bool showNonCompletedTasks = false; // State for showing completed tasks
 
   void addTask(String taskName) {
     setState(() {
@@ -111,8 +111,9 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
   @override
   Widget build(BuildContext context) {
     List<Task> filteredTasks = widget.goal.tasks.where((task) {
-      if (showStarredTasks && !task.isStarred) return false;
-      if (showCompletedTasks && !task.isCompleted) return false;
+      if ((showStarredTasks && !task.isStarred) || (showNonCompletedTasks && task.isCompleted)) {
+        return false;
+      }
       return true; // Include task if it passes the filters
     }).toList();
 
@@ -153,12 +154,12 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
             // Completed tasks icon to toggle completed tasks
             IconButton(
               icon: Icon(
-                showCompletedTasks ? Icons.check_circle_outline_outlined : Icons.check_circle, // Show or hide completed tasks
+                showNonCompletedTasks ? Icons.check_circle : Icons.check_circle_outline_outlined, // Show or hide completed tasks
                 color: Colors.black,
               ),
               onPressed: () {
                 setState(() {
-                  showCompletedTasks = !showCompletedTasks; // Toggle completed tasks visibility
+                  showNonCompletedTasks = !showNonCompletedTasks; // Toggle completed tasks visibility
                 });
               },
             ),

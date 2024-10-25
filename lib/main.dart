@@ -33,6 +33,7 @@ class MainPage extends StatefulWidget {
 class _MainPageState extends State<MainPage> {
   List<Goal> goals = [];
   Set<Color> selectedColors = {};
+  bool showImportExportButtons = false; // Initially hide Import/Export buttons
 
   @override
   void initState() {
@@ -120,16 +121,6 @@ class _MainPageState extends State<MainPage> {
                 },
                 child: const Text('Replace'),
               ),
-              // TextButton(
-              //   onPressed: () {
-              //     setState(() {
-              //       goals.addAll(jsonData.map((goalJson) => Goal.fromJson(goalJson)));
-              //     });
-              //     _saveGoals();
-              //     Navigator.pop(context);
-              //   },
-              //   child: const Text('Add'),
-              // ),
               TextButton(
                 onPressed: () => Navigator.pop(context),
                 child: const Text('Cancel'),
@@ -216,21 +207,30 @@ class _MainPageState extends State<MainPage> {
       floatingActionButton: Column(
         mainAxisAlignment: MainAxisAlignment.end,
         children: [
-          FloatingActionButton(
-            onPressed: () => importGoals(),
-            child: Icon(Icons.download),
-            tooltip: 'Import Goals',
-          ),
-          SizedBox(height: 16), // Space between buttons
-          FloatingActionButton(
-            onPressed: () => exportGoals(),
-            child: Icon(Icons.upload_file),
-            tooltip: 'Export Goals',
-          ),
-          SizedBox(height: 16), // Space between buttons
+          if (showImportExportButtons) ...[
+            FloatingActionButton(
+              onPressed: () => importGoals(),
+              child: Icon(Icons.download),
+              tooltip: 'Import Goals',
+            ),
+            SizedBox(height: 16), // Space between buttons
+            FloatingActionButton(
+              onPressed: () => exportGoals(),
+              child: Icon(Icons.upload_file),
+              tooltip: 'Export Goals',
+            ),
+            SizedBox(height: 16), // Space between buttons
+          ],
           FloatingActionButton(
             onPressed: () => showAddGoalDialog(context, addGoal),
-            child: Icon(Icons.add),
+            child: GestureDetector(
+              onLongPress: () {
+                setState(() {
+                  showImportExportButtons = !showImportExportButtons;
+                });
+              },
+              child: Icon(Icons.add),
+            ),
             tooltip: 'Add Goal',
           ),
         ],

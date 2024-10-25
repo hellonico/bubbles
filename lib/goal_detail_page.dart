@@ -1,7 +1,6 @@
 import 'package:bubbles/task_timer_page.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
-// import 'package:url_launcher/url_launcher.dart'; // Add URL launcher
 import 'package:shared_preferences/shared_preferences.dart';
 import 'add_task_dialog.dart';
 import 'edit_task_page.dart';
@@ -19,7 +18,6 @@ class GoalDetailPage extends StatefulWidget {
 }
 
 class _GoalDetailPageState extends State<GoalDetailPage> {
-
   void addTask(String taskName) {
     setState(() {
       widget.goal.tasks.add(Task(title: taskName));
@@ -56,7 +54,8 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
           ),
         ],
       ),
-    ) ?? false;
+    ) ??
+        false;
 
     if (shouldDelete) {
       setState(() {
@@ -83,26 +82,23 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
     );
   }
 
-
-
   Future<void> _saveTaskToLocal(Task task) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(task.title, task.description ?? '');
     widget.refreshGoals();
   }
+
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
       onHorizontalDragEnd: (details) {
         if (details.primaryVelocity! > 0) {
-          // Swipe right to go back
           Navigator.of(context).pop();
         }
       },
       child: Scaffold(
         appBar: AppBar(
           title: Text(widget.goal.name),
-          // Add tap gesture to navigate to markdown view
           actions: [
             IconButton(
               icon: Icon(Icons.text_format),
@@ -116,40 +112,49 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
             ),
           ],
         ),
-        body: ListView.builder(
-          itemCount: widget.goal.tasks.length,
-          itemBuilder: (context, index) {
+        body: ReorderableListView(
+          onReorder: (int oldIndex, int newIndex) {
+            setState(() {
+              if (newIndex > oldIndex) newIndex -= 1;
+              final task = widget.goal.tasks.removeAt(oldIndex);
+              widget.goal.tasks.insert(newIndex, task);
+            });
+            widget.refreshGoals(); // Save goals after reordering
+          },
+          children: List.generate(widget.goal.tasks.length, (index) {
             Task task = widget.goal.tasks[index];
             return Container(
-              color: task.isCompleted ? widget.goal.color : Colors.transparent, // Set background color based on completion status
+              key: ValueKey(task.title), // Ensure each task has a unique key
+              color: task.isCompleted
+                  ? widget.goal.color
+                  : Colors.transparent, // Set background color based on completion status
               child: Dismissible(
                 key: Key(task.title), // Unique key for each task
                 background: Container(
-                  color: Colors.blue, // Background color for swipe right
+                  color: Colors.blue,
                   alignment: Alignment.centerLeft,
                   padding: EdgeInsets.only(left: 20),
-                  child: Icon(Icons.edit, color: Colors.white), // Edit icon
+                  child: Icon(Icons.edit, color: Colors.white),
                 ),
                 secondaryBackground: Container(
-                  color: Colors.red, // Background color for swipe left
+                  color: Colors.red,
                   alignment: Alignment.centerRight,
                   padding: EdgeInsets.only(right: 20),
-                  child: Icon(Icons.delete, color: Colors.white), // Delete icon
+                  child: Icon(Icons.delete, color: Colors.white),
                 ),
                 confirmDismiss: (direction) async {
                   if (direction == DismissDirection.endToStart) {
-                    await deleteTask(task); // Call delete task function
-                    return false; // Prevent the card from being dismissed
+                    await deleteTask(task);
+                    return false;
                   } else if (direction == DismissDirection.startToEnd) {
-                    editTask(task); // Navigate to edit page
-                    return false; // Prevent the card from being dismissed
+                    editTask(task);
+                    return false;
                   }
                   return false;
                 },
                 child: GestureDetector(
                   onTap: () {
-                    // Navigate to timer page
-                    startTimer(task); // Replace with your navigation logic
+                    startTimer(task);
                   },
                   child: ListTile(
                     title: RichText(
@@ -157,7 +162,9 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
                         children: _buildTextSpan(task.title),
                       ),
                     ),
-                    subtitle: task.description != null ? Text(task.description!.split('\n').first) : null, // Show only the first line of description
+                    subtitle: task.description != null
+                        ? Text(task.description!.split('\n').first)
+                        : null,
                     trailing: Checkbox(
                       value: task.isCompleted,
                       onChanged: (bool? value) {
@@ -168,7 +175,7 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
                 ),
               ),
             );
-          },
+          }),
         ),
         floatingActionButton: FloatingActionButton(
           onPressed: () => showAddTaskDialog(context, addTask),
@@ -178,23 +185,23 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
     );
   }
 
-
   List<TextSpan> _buildTextSpan(String text) {
-    final RegExp urlRegex = RegExp(
-        r'(https?:\/\/[^\s]+)|(www\.[^\s]+)');
+    final RegExp urlRegex = RegExp(r'(https?:\/\/[^\s]+)|(www\.[^\s]+)');
     List<TextSpan> spans = [];
     text.split(' ').forEach((word) {
       if (urlRegex.hasMatch(word)) {
         spans.add(TextSpan(
           text: word + ' ',
-          style: TextStyle(color: Colors.blue, decoration: TextDecoration.underline),
+          style: TextStyle(
+              color: Colors.blue, decoration: TextDecoration.underline),
           recognizer: TapGestureRecognizer()
             ..onTap = () {
               _launchURL(word);
             },
         ));
       } else {
-        spans.add(TextSpan(style: TextStyle(color: Colors.black), text: word + ' '));
+        spans.add(
+            TextSpan(style: TextStyle(color: Colors.black), text: word + ' '));
       }
     });
     return spans;
@@ -206,11 +213,11 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
         builder: (context) => TaskTimerPage(
           taskName: task.title,
           onComplete: () {
-            completeTask(task, true); // Mark task as complete
-            Navigator.of(context).pop(); // Return to the task list
+            completeTask(task, true);
+            Navigator.of(context).pop();
           },
           onLater: () {
-            Navigator.of(context).pop(); // Simply return without completing
+            Navigator.of(context).pop();
           },
         ),
       ),
@@ -226,4 +233,3 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
     // }
   }
 }
-

@@ -2,6 +2,7 @@ import 'package:bubbles/task_timer_page.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
 import 'add_task_dialog.dart';
 import 'edit_task_page.dart';
 import 'goal.dart';
@@ -45,26 +46,26 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
 
   Future<void> deleteTask(Task task) async {
     bool shouldDelete = await showDialog<bool>(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: Text('Delete Task'),
-            content: Text('Are you sure you want to delete this task?'),
-            actions: [
-              TextButton(
-                child: Text('Cancel'),
-                onPressed: () {
-                  Navigator.of(context).pop(false);
-                },
-              ),
-              TextButton(
-                child: Text('Delete'),
-                onPressed: () {
-                  Navigator.of(context).pop(true);
-                },
-              ),
-            ],
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Delete Task'),
+        content: Text('Are you sure you want to delete this task?'),
+        actions: [
+          TextButton(
+            child: Text('Cancel'),
+            onPressed: () {
+              Navigator.of(context).pop(false);
+            },
           ),
-        ) ??
+          TextButton(
+            child: Text('Delete'),
+            onPressed: () {
+              Navigator.of(context).pop(true);
+            },
+          ),
+        ],
+      ),
+    ) ??
         false;
 
     if (shouldDelete) {
@@ -98,8 +99,23 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
     widget.refreshGoals();
   }
 
+  void reorderTasks(int oldIndex, int newIndex) {
+    setState(() {
+      if (newIndex > oldIndex) newIndex--;
+      final Task task = widget.goal.tasks.removeAt(oldIndex);
+      widget.goal.tasks.insert(newIndex, task);
+    });
+    widget.refreshGoals();
+  }
+
   @override
   Widget build(BuildContext context) {
+    List<Task> filteredTasks = widget.goal.tasks.where((task) {
+      if (showStarredTasks && !task.isStarred) return false;
+      if (showCompletedTasks && !task.isCompleted) return false;
+      return true; // Include task if it passes the filters
+    }).toList();
+
     return GestureDetector(
       onHorizontalDragEnd: (details) {
         if (details.primaryVelocity! > 0) {
@@ -110,7 +126,6 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
         appBar: AppBar(
           title: Text(widget.goal.name),
           backgroundColor: widget.goal.color,
-          // Set the AppBar color to the goal's color
           actions: [
             // Markdown icon to open the MarkdownViewPage
             IconButton(
@@ -127,50 +142,46 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
             IconButton(
               icon: Icon(
                 showStarredTasks ? Icons.star : Icons.star_border,
-                color: showStarredTasks
-                    ? Colors.yellow
-                    : Colors.black, // Yellow when active
+                color: showStarredTasks ? Colors.yellow : Colors.black, // Yellow when active
               ),
               onPressed: () {
                 setState(() {
-                  showStarredTasks =
-                      !showStarredTasks; // Toggle starred tasks visibility
+                  showStarredTasks = !showStarredTasks; // Toggle starred tasks visibility
                 });
               },
             ),
             // Completed tasks icon to toggle completed tasks
             IconButton(
               icon: Icon(
-                showCompletedTasks
-                    ? Icons.check_circle_outline_outlined
-                    : Icons.check_circle, // Show or hide completed tasks
+                showCompletedTasks ? Icons.check_circle_outline_outlined : Icons.check_circle, // Show or hide completed tasks
                 color: Colors.black,
-                fill: 1.0,
               ),
               onPressed: () {
                 setState(() {
-                  showCompletedTasks =
-                      !showCompletedTasks; // Toggle completed tasks visibility
+                  showCompletedTasks = !showCompletedTasks; // Toggle completed tasks visibility
                 });
               },
             ),
           ],
         ),
-        body: ListView.builder(
-          itemCount: widget.goal.tasks.length,
+        body: ReorderableListView.builder(
+          onReorder: reorderTasks,
+          // itemCount: widget.goal.tasks.length,
+          itemCount: filteredTasks.length,
           itemBuilder: (context, index) {
-            Task task = widget.goal.tasks[index];
+            // Task task = widget.goal.tasks[index];
+            Task task = filteredTasks.elementAt(index);
 
             // Filter based on starred and completed tasks
-            if (showStarredTasks && !task.isStarred) return Container();
-            if (!showCompletedTasks && task.isCompleted) return Container();
+            // if (showStarredTasks && !task.isStarred) return Container();
+            // if (!showCompletedTasks && task.isCompleted) return Container();
+            // already filtered !
 
             return Container(
+              key: ValueKey(task.title), // Unique key for each task
               color: task.isCompleted ? widget.goal.color : Colors.transparent,
-              // Color based on completion
               child: Dismissible(
-                key: Key(task.title),
-                // Unique key for each task
+                key: ValueKey(task.title),
                 background: Container(
                   color: Colors.blue, // Edit background color
                   alignment: Alignment.centerLeft,
@@ -194,6 +205,7 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
                   return false;
                 },
                 child: GestureDetector(
+                  key: ValueKey(task.title),
                   onTap: () {
                     startTimer(task); // Timer logic
                   },
@@ -217,11 +229,7 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
                             color: task.isStarred ? Colors.yellow : Colors.grey,
                           ),
                           onPressed: () {
-                            setState(() {
-                              task.isStarred =
-                                  !task.isStarred; // Toggle star status
-                            });
-                            widget.refreshGoals(); // Refresh the goal list
+                            toggleStar(task); // Toggle star status
                           },
                         ),
                         // Checkbox for completion

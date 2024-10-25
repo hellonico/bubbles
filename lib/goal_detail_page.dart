@@ -18,7 +18,8 @@ class GoalDetailPage extends StatefulWidget {
 }
 
 class _GoalDetailPageState extends State<GoalDetailPage> {
-  bool showStarredOnly = false; // Toggle for showing only starred tasks
+  bool showStarredTasks = false; // State for showing starred tasks
+  bool showCompletedTasks = true; // State for showing completed tasks
 
   void addTask(String taskName) {
     setState(() {
@@ -96,12 +97,9 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
     widget.refreshGoals();
   }
 
+
   @override
   Widget build(BuildContext context) {
-    List<Task> tasks = showStarredOnly
-        ? widget.goal.tasks.where((task) => task.isStarred).toList()
-        : widget.goal.tasks;
-
     return GestureDetector(
       onHorizontalDragEnd: (details) {
         if (details.primaryVelocity! > 0) {
@@ -112,73 +110,71 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
         appBar: AppBar(
           title: Text(widget.goal.name),
           actions: [
-            IconButton(
-              icon: Icon(Icons.text_format),
-              onPressed: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (context) => MarkdownViewPage(goal: widget.goal),
-                  ),
-                );
-              },
-            ),
+            // Star icon to toggle starred tasks
             IconButton(
               icon: Icon(
-                showStarredOnly ? Icons.star : Icons.star_border,
-                color: showStarredOnly ? Colors.yellow : Colors.white,
+                showStarredTasks ? Icons.star : Icons.star_border,
+                color: showStarredTasks ? Colors.yellow : Colors.black, // Yellow when active
               ),
               onPressed: () {
                 setState(() {
-                  showStarredOnly = !showStarredOnly; // Toggle task view
+                  showStarredTasks = !showStarredTasks; // Toggle starred tasks visibility
                 });
               },
-              tooltip: 'Show Starred Tasks',
+            ),
+            // Completed tasks icon to toggle completed tasks
+            IconButton(
+              icon: Icon(
+                showCompletedTasks ? Icons.check_circle : Icons.check_circle_outline_outlined, // Show or hide completed tasks
+                color: Colors.black,
+                fill: 1.0,
+              ),
+              onPressed: () {
+                setState(() {
+                  showCompletedTasks = !showCompletedTasks; // Toggle completed tasks visibility
+                });
+              },
             ),
           ],
         ),
-        body: ReorderableListView.builder(
-          onReorder: (oldIndex, newIndex) {
-            setState(() {
-              if (newIndex > oldIndex) {
-                newIndex -= 1;
-              }
-              final Task item = tasks.removeAt(oldIndex);
-              tasks.insert(newIndex, item);
-            });
-          },
-          itemCount: tasks.length,
+        body: ListView.builder(
+          itemCount: widget.goal.tasks.length,
           itemBuilder: (context, index) {
-            Task task = tasks[index];
+            Task task = widget.goal.tasks[index];
+
+            // Filter based on starred and completed tasks
+            if (showStarredTasks && !task.isStarred) return Container();
+            if (!showCompletedTasks && task.isCompleted) return Container();
+
             return Container(
-              key: Key(task.title),
-              color: task.isCompleted ? widget.goal.color : Colors.transparent,
+              color: task.isCompleted ? widget.goal.color : Colors.transparent, // Color based on completion
               child: Dismissible(
-                key: Key(task.title),
+                key: Key(task.title), // Unique key for each task
                 background: Container(
-                  color: Colors.blue,
+                  color: Colors.blue, // Edit background color
                   alignment: Alignment.centerLeft,
                   padding: EdgeInsets.only(left: 20),
-                  child: Icon(Icons.edit, color: Colors.white),
+                  child: Icon(Icons.edit, color: Colors.white), // Edit icon
                 ),
                 secondaryBackground: Container(
-                  color: Colors.red,
+                  color: Colors.red, // Delete background color
                   alignment: Alignment.centerRight,
                   padding: EdgeInsets.only(right: 20),
-                  child: Icon(Icons.delete, color: Colors.white),
+                  child: Icon(Icons.delete, color: Colors.white), // Delete icon
                 ),
                 confirmDismiss: (direction) async {
                   if (direction == DismissDirection.endToStart) {
-                    await deleteTask(task);
-                    return false;
+                    await deleteTask(task); // Delete task logic
+                    return false; // Prevent dismissal
                   } else if (direction == DismissDirection.startToEnd) {
-                    editTask(task);
-                    return false;
+                    editTask(task); // Edit task logic
+                    return false; // Prevent dismissal
                   }
                   return false;
                 },
                 child: GestureDetector(
                   onTap: () {
-                    startTimer(task);
+                    startTimer(task); // Timer logic
                   },
                   child: ListTile(
                     title: RichText(
@@ -188,23 +184,28 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
                     ),
                     subtitle: task.description != null
                         ? Text(task.description!.split('\n').first)
-                        : null,
+                        : null, // Show first line of description
                     trailing: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
+                        // Star icon for each task
                         IconButton(
                           icon: Icon(
-                            task.isStarred ? Icons.star : Icons.star_border,
-                            color: task.isStarred ? Colors.yellow : null,
+                            task.isStarred ? Icons.star : Icons.star_border, // Show starred or empty star
+                            color: task.isStarred ? Colors.yellow : Colors.grey,
                           ),
                           onPressed: () {
-                            toggleStar(task);
+                            setState(() {
+                              task.isStarred = !task.isStarred; // Toggle star status
+                            });
+                            widget.refreshGoals(); // Refresh the goal list
                           },
                         ),
+                        // Checkbox for completion
                         Checkbox(
                           value: task.isCompleted,
                           onChanged: (bool? value) {
-                            completeTask(task, value);
+                            completeTask(task, value); // Complete task logic
                           },
                         ),
                       ],
@@ -216,7 +217,7 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
           },
         ),
         floatingActionButton: FloatingActionButton(
-          onPressed: () => showAddTaskDialog(context, addTask),
+          onPressed: () => showAddTaskDialog(context, addTask), // Add task logic
           child: Icon(Icons.add),
         ),
       ),

@@ -110,6 +110,17 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
         appBar: AppBar(
           title: Text(widget.goal.name),
           actions: [
+            // Markdown icon to open the MarkdownViewPage
+            IconButton(
+              icon: Icon(Icons.description), // Icon for markdown
+              onPressed: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) => MarkdownViewPage(goal: widget.goal),
+                  ),
+                );
+              },
+            ),
             // Star icon to toggle starred tasks
             IconButton(
               icon: Icon(
@@ -125,7 +136,7 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
             // Completed tasks icon to toggle completed tasks
             IconButton(
               icon: Icon(
-                showCompletedTasks ? Icons.check_circle : Icons.check_circle_outline_outlined, // Show or hide completed tasks
+                showCompletedTasks ? Icons.check_circle_outline_rounded : Icons.check_circle_outline_outlined, // Show or hide completed tasks
                 color: Colors.black,
                 fill: 1.0,
               ),

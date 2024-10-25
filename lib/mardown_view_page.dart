@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:share_plus/share_plus.dart'; // Import share_plus for sharing
 import 'goal.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 
@@ -11,7 +12,18 @@ class MarkdownViewPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text("${goal.name}")),
+      appBar: AppBar(
+        title: Text("${goal.name}"),
+        actions: [
+          IconButton(
+            icon: Icon(Icons.share),
+            onPressed: () {
+              // Share the markdown content when the share button is pressed
+              _shareMarkdownContent();
+            },
+          ),
+        ],
+      ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Markdown(
@@ -35,15 +47,18 @@ class MarkdownViewPage extends StatelessWidget {
       }
       markdownBuffer.writeln(); // Blank line for separation
       if (task.isCompleted) {
-        markdownBuffer.writeln('--- Completed on:${task.completedAt?.toLocal().toString()}'); // Completion date
+        markdownBuffer.writeln('--- Completed on: ${task.completedAt?.toLocal().toString()}'); // Completion date
       }
-      markdownBuffer.writeln();
-      // markdownBuffer.writeln("---");
       markdownBuffer.writeln(); // Blank line for separation
     }
     return markdownBuffer.toString();
   }
 
+  // Function to share the Markdown content
+  void _shareMarkdownContent() {
+    final String markdownData = _generateMarkdownData();
+    Share.share(markdownData, subject: '${goal.name} Tasks'); // Share with subject
+  }
 
   // Function to launch URLs
   void _launchURL(String url) async {
@@ -54,5 +69,4 @@ class MarkdownViewPage extends StatelessWidget {
       throw 'Could not launch $url';
     }
   }
-
 }

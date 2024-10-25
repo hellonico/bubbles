@@ -1,20 +1,26 @@
 import 'package:flutter/material.dart';
-
 class Task {
   String title;
   bool isCompleted;
   DateTime? completedAt;
-
   var description;
+  bool isStarred; // New property to indicate if a task is starred
 
-  Task({required this.title, this.isCompleted = false, this.completedAt, this.description});
+  Task({
+    required this.title,
+    this.isCompleted = false,
+    this.completedAt,
+    this.description,
+    this.isStarred = false, // Default is not starred
+  });
 
   // Convert Task to JSON
   Map<String, dynamic> toJson() => {
     'title': title,
     'isCompleted': isCompleted,
     'completedAt': completedAt?.toIso8601String(),
-    'description' : description
+    'description': description,
+    'isStarred': isStarred, // Add isStarred to JSON
   };
 
   // Create Task from JSON
@@ -23,12 +29,14 @@ class Task {
       title: json['title'],
       isCompleted: json['isCompleted'],
       description: json['description'],
+      isStarred: json['isStarred'] ?? false, // Default to false if not present
       completedAt: json['completedAt'] != null
           ? DateTime.parse(json['completedAt'])
           : null,
     );
   }
 }
+
 class Goal {
   String name;
   Color color;

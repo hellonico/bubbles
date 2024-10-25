@@ -18,6 +18,8 @@ class GoalDetailPage extends StatefulWidget {
 }
 
 class _GoalDetailPageState extends State<GoalDetailPage> {
+  bool showStarredOnly = false; // Toggle for showing only starred tasks
+
   void addTask(String taskName) {
     setState(() {
       widget.goal.tasks.add(Task(title: taskName));
@@ -29,6 +31,13 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
     setState(() {
       task.isCompleted = value ?? false;
       task.completedAt = value == true ? DateTime.now() : null;
+    });
+    widget.refreshGoals();
+  }
+
+  void toggleStar(Task task) {
+    setState(() {
+      task.isStarred = !task.isStarred; // Toggle the star status
     });
     widget.refreshGoals();
   }
@@ -54,8 +63,7 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
           ),
         ],
       ),
-    ) ??
-        false;
+    ) ?? false;
 
     if (shouldDelete) {
       setState(() {
@@ -90,6 +98,10 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
 
   @override
   Widget build(BuildContext context) {
+    List<Task> tasks = showStarredOnly
+        ? widget.goal.tasks.where((task) => task.isStarred).toList()
+        : widget.goal.tasks;
+
     return GestureDetector(
       onHorizontalDragEnd: (details) {
         if (details.primaryVelocity! > 0) {
@@ -110,26 +122,38 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
                 );
               },
             ),
+            IconButton(
+              icon: Icon(
+                showStarredOnly ? Icons.star : Icons.star_border,
+                color: showStarredOnly ? Colors.yellow : Colors.white,
+              ),
+              onPressed: () {
+                setState(() {
+                  showStarredOnly = !showStarredOnly; // Toggle task view
+                });
+              },
+              tooltip: 'Show Starred Tasks',
+            ),
           ],
         ),
-        body: ReorderableListView(
-          onReorder: (int oldIndex, int newIndex) {
+        body: ReorderableListView.builder(
+          onReorder: (oldIndex, newIndex) {
             setState(() {
-              if (newIndex > oldIndex) newIndex -= 1;
-              final task = widget.goal.tasks.removeAt(oldIndex);
-              widget.goal.tasks.insert(newIndex, task);
+              if (newIndex > oldIndex) {
+                newIndex -= 1;
+              }
+              final Task item = tasks.removeAt(oldIndex);
+              tasks.insert(newIndex, item);
             });
-            widget.refreshGoals(); // Save goals after reordering
           },
-          children: List.generate(widget.goal.tasks.length, (index) {
-            Task task = widget.goal.tasks[index];
+          itemCount: tasks.length,
+          itemBuilder: (context, index) {
+            Task task = tasks[index];
             return Container(
-              key: ValueKey(task.title), // Ensure each task has a unique key
-              color: task.isCompleted
-                  ? widget.goal.color
-                  : Colors.transparent, // Set background color based on completion status
+              key: Key(task.title),
+              color: task.isCompleted ? widget.goal.color : Colors.transparent,
               child: Dismissible(
-                key: Key(task.title), // Unique key for each task
+                key: Key(task.title),
                 background: Container(
                   color: Colors.blue,
                   alignment: Alignment.centerLeft,
@@ -165,17 +189,31 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
                     subtitle: task.description != null
                         ? Text(task.description!.split('\n').first)
                         : null,
-                    trailing: Checkbox(
-                      value: task.isCompleted,
-                      onChanged: (bool? value) {
-                        completeTask(task, value);
-                      },
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          icon: Icon(
+                            task.isStarred ? Icons.star : Icons.star_border,
+                            color: task.isStarred ? Colors.yellow : null,
+                          ),
+                          onPressed: () {
+                            toggleStar(task);
+                          },
+                        ),
+                        Checkbox(
+                          value: task.isCompleted,
+                          onChanged: (bool? value) {
+                            completeTask(task, value);
+                          },
+                        ),
+                      ],
                     ),
                   ),
                 ),
               ),
             );
-          }),
+          },
         ),
         floatingActionButton: FloatingActionButton(
           onPressed: () => showAddTaskDialog(context, addTask),
@@ -192,16 +230,14 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
       if (urlRegex.hasMatch(word)) {
         spans.add(TextSpan(
           text: word + ' ',
-          style: TextStyle(
-              color: Colors.blue, decoration: TextDecoration.underline),
+          style: TextStyle(color: Colors.blue, decoration: TextDecoration.underline),
           recognizer: TapGestureRecognizer()
             ..onTap = () {
               _launchURL(word);
             },
         ));
       } else {
-        spans.add(
-            TextSpan(style: TextStyle(color: Colors.black), text: word + ' '));
+        spans.add(TextSpan(style: TextStyle(color: Colors.black), text: word + ' '));
       }
     });
     return spans;
@@ -226,10 +262,6 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
 
   void _launchURL(String url) async {
     final Uri uri = Uri.parse(url);
-    // if (await canLaunch(uri.toString())) {
-    //   await launch(uri.toString());
-    // } else {
-    //   throw 'Could not launch $url';
-    // }
+    // Launch URL code here
   }
 }

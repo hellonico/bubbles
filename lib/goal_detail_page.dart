@@ -45,26 +45,27 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
 
   Future<void> deleteTask(Task task) async {
     bool shouldDelete = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Delete Task'),
-        content: Text('Are you sure you want to delete this task?'),
-        actions: [
-          TextButton(
-            child: Text('Cancel'),
-            onPressed: () {
-              Navigator.of(context).pop(false);
-            },
+          context: context,
+          builder: (context) => AlertDialog(
+            title: Text('Delete Task'),
+            content: Text('Are you sure you want to delete this task?'),
+            actions: [
+              TextButton(
+                child: Text('Cancel'),
+                onPressed: () {
+                  Navigator.of(context).pop(false);
+                },
+              ),
+              TextButton(
+                child: Text('Delete'),
+                onPressed: () {
+                  Navigator.of(context).pop(true);
+                },
+              ),
+            ],
           ),
-          TextButton(
-            child: Text('Delete'),
-            onPressed: () {
-              Navigator.of(context).pop(true);
-            },
-          ),
-        ],
-      ),
-    ) ?? false;
+        ) ??
+        false;
 
     if (shouldDelete) {
       setState(() {
@@ -97,7 +98,6 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
     widget.refreshGoals();
   }
 
-
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
@@ -109,6 +109,8 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
       child: Scaffold(
         appBar: AppBar(
           title: Text(widget.goal.name),
+          backgroundColor: widget.goal.color,
+          // Set the AppBar color to the goal's color
           actions: [
             // Markdown icon to open the MarkdownViewPage
             IconButton(
@@ -125,24 +127,30 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
             IconButton(
               icon: Icon(
                 showStarredTasks ? Icons.star : Icons.star_border,
-                color: showStarredTasks ? Colors.yellow : Colors.black, // Yellow when active
+                color: showStarredTasks
+                    ? Colors.yellow
+                    : Colors.black, // Yellow when active
               ),
               onPressed: () {
                 setState(() {
-                  showStarredTasks = !showStarredTasks; // Toggle starred tasks visibility
+                  showStarredTasks =
+                      !showStarredTasks; // Toggle starred tasks visibility
                 });
               },
             ),
             // Completed tasks icon to toggle completed tasks
             IconButton(
               icon: Icon(
-                showCompletedTasks ? Icons.check_circle_outline_outlined:  Icons.check_circle,  // Show or hide completed tasks
+                showCompletedTasks
+                    ? Icons.check_circle_outline_outlined
+                    : Icons.check_circle, // Show or hide completed tasks
                 color: Colors.black,
                 fill: 1.0,
               ),
               onPressed: () {
                 setState(() {
-                  showCompletedTasks = !showCompletedTasks; // Toggle completed tasks visibility
+                  showCompletedTasks =
+                      !showCompletedTasks; // Toggle completed tasks visibility
                 });
               },
             ),
@@ -158,9 +166,11 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
             if (!showCompletedTasks && task.isCompleted) return Container();
 
             return Container(
-              color: task.isCompleted ? widget.goal.color : Colors.transparent, // Color based on completion
+              color: task.isCompleted ? widget.goal.color : Colors.transparent,
+              // Color based on completion
               child: Dismissible(
-                key: Key(task.title), // Unique key for each task
+                key: Key(task.title),
+                // Unique key for each task
                 background: Container(
                   color: Colors.blue, // Edit background color
                   alignment: Alignment.centerLeft,
@@ -202,12 +212,14 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
                         // Star icon for each task
                         IconButton(
                           icon: Icon(
-                            task.isStarred ? Icons.star : Icons.star_border, // Show starred or empty star
+                            task.isStarred ? Icons.star : Icons.star_border,
+                            // Show starred or empty star
                             color: task.isStarred ? Colors.yellow : Colors.grey,
                           ),
                           onPressed: () {
                             setState(() {
-                              task.isStarred = !task.isStarred; // Toggle star status
+                              task.isStarred =
+                                  !task.isStarred; // Toggle star status
                             });
                             widget.refreshGoals(); // Refresh the goal list
                           },
@@ -228,7 +240,8 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
           },
         ),
         floatingActionButton: FloatingActionButton(
-          onPressed: () => showAddTaskDialog(context, addTask), // Add task logic
+          onPressed: () => showAddTaskDialog(context, addTask),
+          // Add task logic
           child: Icon(Icons.add),
         ),
       ),
@@ -242,14 +255,16 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
       if (urlRegex.hasMatch(word)) {
         spans.add(TextSpan(
           text: word + ' ',
-          style: TextStyle(color: Colors.blue, decoration: TextDecoration.underline),
+          style: TextStyle(
+              color: Colors.blue, decoration: TextDecoration.underline),
           recognizer: TapGestureRecognizer()
             ..onTap = () {
               _launchURL(word);
             },
         ));
       } else {
-        spans.add(TextSpan(style: TextStyle(color: Colors.black), text: word + ' '));
+        spans.add(
+            TextSpan(style: TextStyle(color: Colors.black), text: word + ' '));
       }
     });
     return spans;

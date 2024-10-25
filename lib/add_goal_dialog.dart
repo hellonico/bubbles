@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
 
+class ColorPaletteState {
+  static String selectedPalette = 'Pastel'; // Default to 'Pastel'
+}
+
 void showAddGoalDialog(BuildContext context, Function(String, Color) addGoal) {
   showGoalDialog(
     context: context,
@@ -78,9 +82,11 @@ void showGoalDialog({
     ],
   };
 
-  // Set initial color to the first color in the pastel list if not provided
-  Color selectedColor = initialColor ?? colorPalettes['Pastel']![0];
-  String selectedPalette = 'Pastel';
+  // Set initial color to the first color in the current palette
+  Color selectedColor = initialColor ?? colorPalettes[ColorPaletteState.selectedPalette]![0];
+
+  // Use the current selected palette
+  String selectedPalette = ColorPaletteState.selectedPalette;
 
   showDialog(
     context: context,
@@ -118,6 +124,7 @@ void showGoalDialog({
                   onChanged: (value) {
                     setState(() {
                       selectedPalette = value!;
+                      ColorPaletteState.selectedPalette = selectedPalette; // Update the global state
                       // Reset selected color to the first color of the new palette
                       selectedColor = colorPalettes[selectedPalette]![0];
                     });
@@ -168,3 +175,7 @@ void showGoalDialog({
     },
   );
 }
+
+
+
+

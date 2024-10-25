@@ -1,14 +1,15 @@
-import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'dart:io'; // For File
-import 'package:path_provider/path_provider.dart'; // For path_provider
-import 'package:share_plus/share_plus.dart'; // For sharing files
+
 import 'package:file_picker/file_picker.dart'; // For file picking
+import 'package:flutter/material.dart';
+import 'package:share_plus/share_plus.dart'; // For sharing files
+import 'package:shared_preferences/shared_preferences.dart';
+
+import 'add_goal_dialog.dart';
 import 'goal.dart';
 import 'goal_card.dart';
 import 'goal_detail_page.dart';
-import 'add_goal_dialog.dart';
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
@@ -34,6 +35,7 @@ class _MainPageState extends State<MainPage> {
   List<Goal> goals = [];
   Set<Color> selectedColors = {};
   bool showImportExportButtons = false; // Initially hide Import/Export buttons
+  bool showCompletedGoals = false;  // Hide completed goals by default
 
   @override
   void initState() {
@@ -85,9 +87,24 @@ class _MainPageState extends State<MainPage> {
     _saveGoals();
   }
 
+  // List<Goal> getFilteredGoals() {
+  //   if (selectedColors.isEmpty) return goals;
+  //   return goals.where((goal) => selectedColors.contains(goal.color)).toList();
+  // }
   List<Goal> getFilteredGoals() {
-    if (selectedColors.isEmpty) return goals;
-    return goals.where((goal) => selectedColors.contains(goal.color)).toList();
+    List<Goal> filteredGoals = selectedColors.isEmpty ? goals : goals.where((goal) => selectedColors.contains(goal.color)).toList();
+
+    // Hide completed goals if 'showCompletedGoals' is false
+    if (!showCompletedGoals) {
+      filteredGoals = filteredGoals.where((goal) => !isGoalCompleted(goal)).toList();
+    }
+
+    return filteredGoals;
+  }
+
+  bool isGoalCompleted(Goal goal) {
+    if (goal.tasks.isEmpty) return false; // A goal with no tasks is not considered completed
+    return goal.tasks.every((task) => task.isCompleted); // All tasks must be completed
   }
 
   Future<void> exportGoals() async {
@@ -218,6 +235,16 @@ class _MainPageState extends State<MainPage> {
               onPressed: () => exportGoals(),
               child: Icon(Icons.upload_file),
               tooltip: 'Export Goals',
+            ),
+            SizedBox(height: 16), // Space between buttons
+            FloatingActionButton(
+              onPressed: () {
+                setState(() {
+                  showCompletedGoals = !showCompletedGoals;
+                });
+              },
+              child: Icon(showCompletedGoals ? Icons.visibility_off : Icons.visibility),
+              tooltip: showCompletedGoals ? 'Hide Completed Goals' : 'Show Completed Goals',
             ),
             SizedBox(height: 16), // Space between buttons
           ],

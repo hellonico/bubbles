@@ -136,7 +136,7 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
             // Completed tasks icon to toggle completed tasks
             IconButton(
               icon: Icon(
-                showCompletedTasks ? Icons.check_circle_outline_rounded : Icons.check_circle_outline_outlined, // Show or hide completed tasks
+                showCompletedTasks ? Icons.check_circle_outline_outlined:  Icons.check_circle,  // Show or hide completed tasks
                 color: Colors.black,
                 fill: 1.0,
               ),

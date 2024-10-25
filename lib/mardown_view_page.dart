@@ -41,7 +41,10 @@ class MarkdownViewPage extends StatelessWidget {
   String _generateMarkdownData() {
     StringBuffer markdownBuffer = StringBuffer();
     for (var task in goal.tasks) {
-      markdownBuffer.writeln('# ${task.title}'); // Task title as header
+      // Check if the task is starred and append the star character if true
+      String titleWithStar = task.isStarred ? '★ ${task.title}' : task.title;
+
+      markdownBuffer.writeln('# $titleWithStar'); // Task title as header
       if (task.description != null) {
         markdownBuffer.writeln('${task.description}'); // Task description
       }
@@ -49,10 +52,12 @@ class MarkdownViewPage extends StatelessWidget {
       if (task.isCompleted) {
         markdownBuffer.writeln('--- Completed on: ${task.completedAt?.toLocal().toString()}'); // Completion date
       }
+      markdownBuffer.writeln();
       markdownBuffer.writeln(); // Blank line for separation
     }
     return markdownBuffer.toString();
   }
+
 
   // Function to share the Markdown content
   void _shareMarkdownContent() {

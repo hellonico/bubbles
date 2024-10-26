@@ -3,10 +3,12 @@ import 'dart:io'; // For File
 
 import 'package:file_picker/file_picker.dart'; // For file picking
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart'; // For sharing files
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'add_goal_dialog.dart';
+import 'app.dart';
 import 'goal.dart';
 import 'goal_card.dart';
 import 'goal_detail_page.dart';
@@ -292,5 +294,8 @@ class _MainPageState extends State<MainPage> {
 }
 
 void main() {
-  runApp(const MyApp());
+  runApp(ChangeNotifierProvider(
+    create: (context) => AppSettings(),
+    child: MyApp(),
+  ));
 }

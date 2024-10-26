@@ -1,9 +1,11 @@
 import 'package:bubbles/task_timer_page.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'add_task_dialog.dart';
+import 'app.dart';
 import 'edit_task_page.dart';
 import 'goal.dart';
 import 'mardown_view_page.dart';
@@ -19,8 +21,6 @@ class GoalDetailPage extends StatefulWidget {
 }
 
 class _GoalDetailPageState extends State<GoalDetailPage> {
-  bool showStarredTasks = false; // State for showing starred tasks
-  bool showNonCompletedTasks = false; // State for showing completed tasks
 
   void addTask(String taskName) {
     setState(() {
@@ -110,6 +110,10 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
 
   @override
   Widget build(BuildContext context) {
+    final appSettings = Provider.of<AppSettings>(context);
+    bool showStarredTasks = appSettings.showStarredTasks;
+    bool showNonCompletedTasks = appSettings.showNonCompletedTasks;
+
     List<Task> filteredTasks = widget.goal.tasks.where((task) {
       if ((showStarredTasks && !task.isStarred) || (showNonCompletedTasks && task.isCompleted)) {
         return false;
@@ -146,9 +150,10 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
                 color: showStarredTasks ? Colors.yellow : Colors.black, // Yellow when active
               ),
               onPressed: () {
-                setState(() {
-                  showStarredTasks = !showStarredTasks; // Toggle starred tasks visibility
-                });
+                appSettings.toggleShowStarredTasks();
+                // setState(() {
+                //   showStarredTasks = !showStarredTasks; // Toggle starred tasks visibility
+                // });
               },
             ),
             // Completed tasks icon to toggle completed tasks
@@ -158,9 +163,10 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
                 color: Colors.black,
               ),
               onPressed: () {
-                setState(() {
-                  showNonCompletedTasks = !showNonCompletedTasks; // Toggle completed tasks visibility
-                });
+                appSettings.toggleShowNonCompletedTasks();
+                // setState(() {
+                //   showNonCompletedTasks = !showNonCompletedTasks; // Toggle completed tasks visibility
+                // });
               },
             ),
           ],

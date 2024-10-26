@@ -1,4 +1,8 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
+
+import 'utils/utils.dart';
 class Task {
   String title;
   bool isCompleted;
@@ -27,8 +31,8 @@ class Task {
   static Task fromJson(Map<String, dynamic> json) {
     return Task(
       title: json['title'],
-      isCompleted: json['isCompleted'],
-      description: json['description'],
+      isCompleted: json['isCompleted'] ?? "",
+      description: json['description'] ?? "",
       isStarred: json['isStarred'] ?? false, // Default to false if not present
       completedAt: json['completedAt'] != null
           ? DateTime.parse(json['completedAt'])
@@ -41,8 +45,10 @@ class Goal {
   String name;
   Color color;
   List<Task> tasks;
+  bool isSynchronized;
+  DateTime lastUpdated;
 
-  Goal({required this.name, required this.color, required this.tasks});
+  Goal({required this.name, required this.color, required this.tasks, required this.isSynchronized, required this.lastUpdated});
 
   double getProgress() {
     if (tasks.isEmpty) return 0.0; // No tasks mean no progress
@@ -53,16 +59,22 @@ class Goal {
   Map<String, dynamic> toJson() {
     return {
       'name': name,
-      'color': color.value,
+      'color': encodeColorToJson(color),
       'tasks': tasks.map((task) => task.toJson()).toList(),
+      'synchronized' : isSynchronized,
+      'updated' : lastUpdated.toIso8601String(),
     };
   }
 
   factory Goal.fromJson(Map<String, dynamic> json) {
+    print('loading:\n $json');
     return Goal(
       name: json['name'],
-      color: Color(json['color']),
+      color: decodeColorFromJson(json['color']),
       tasks: (json['tasks'] as List).map((taskJson) => Task.fromJson(taskJson)).toList(),
+      isSynchronized: json.containsKey('synchronized') && json['synchronized'] ? json['synchronized'] : false,
+      lastUpdated: json.containsKey('updated') ? DateTime.parse(json['updated']) :  DateTime.fromMicrosecondsSinceEpoch(0),
+      // lastUpdated: DateTime.fromMicrosecondsSinceEpoch(0),
     );
   }
 }

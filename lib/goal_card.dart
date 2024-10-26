@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
-import 'add_goal_dialog.dart';
+import 'dialogs/add_goal_dialog.dart';
 import 'goal.dart';
 
 class GoalCard extends StatelessWidget {
@@ -107,15 +107,17 @@ class GoalCard extends StatelessWidget {
                     Text(
                       goal.name,
                       style: TextStyle(
-                        fontFamily: "Verdana",
+                        // fontFamily: "Verdana",
                         color: Colors.black,
-                        fontWeight: progress < 1.0 ? FontWeight.bold : FontWeight.normal, // Bold if progress < 100%
+                        // fontWeight: progress < 1.0 ? FontWeight.bold : FontWeight.normal, // Bold if progress < 100%
                         fontSize: 20,
                       ),
                     ),
+                    if (progress >= 1.0)
+                      Icon(Icons.check_circle_outline_rounded),
                     if (lastCompletedDate != null) // Show last completed date if exists
                       Text(
-                        'Last completed: $lastCompletedDate',
+                        'Last updated: '+goal.lastUpdated.toIso8601String(),
                         style: TextStyle(
                           color: Colors.black,
                           fontSize: 14,

@@ -1,17 +1,20 @@
 import 'dart:convert';
-import 'dart:io'; // For File
 
-import 'package:file_picker/file_picker.dart'; // For file picking
+import 'package:bubbles/pages/settings_page.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart'; // For sharing files
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'add_goal_dialog.dart';
 import 'app.dart';
+import 'dialogs/add_goal_dialog.dart';
+import 'dialogs/cloud_goal_selection_dialog.dart';
+import 'dialogs/import_goals.dart';
 import 'goal.dart';
 import 'goal_card.dart';
-import 'goal_detail_page.dart';
+import 'mongodb_service.dart';
+import 'pages/goal_detail_page.dart';
+import 'utils/utils.dart';
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
@@ -21,7 +24,7 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'Life Goals App',
       theme: ThemeData(
-        primarySwatch: Colors.blue,
+        primarySwatch: Colors.amber,
       ),
       home: MainPage(),
     );
@@ -37,12 +40,33 @@ class _MainPageState extends State<MainPage> {
   List<Goal> goals = [];
   Set<Color> selectedColors = {};
   bool showImportExportButtons = false; // Initially hide Import/Export buttons
-  bool showCompletedGoals = false;  // Hide completed goals by default
+  bool showCompletedGoals = false; // Hide completed goals by default
 
   @override
   void initState() {
     super.initState();
+    MongoDBService.init();
     _loadGoals();
+    _loadSelectedColors();
+  }
+
+  Future<void> _loadSelectedColors() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    String? _colors = prefs.getString('colors');
+    if (_colors != null) {
+      List<dynamic> colorStrings = jsonDecode(_colors);
+      setState(() {
+        selectedColors = colorStrings
+            .map((hexString) => decodeColorFromJson(hexString))
+            .toSet();
+      });
+    }
+  }
+
+  Future<void> _saveSelectedColors() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    String jsonData = encodeColorsToJson(selectedColors);
+    await prefs.setString('colors', jsonData);
   }
 
   Future<void> _loadGoals() async {
@@ -56,7 +80,7 @@ class _MainPageState extends State<MainPage> {
     }
   }
 
-  Future<void> _saveGoals() async {
+  Future<void> _saveGoalsInSharedPrefs() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     String jsonData = jsonEncode(goals.map((goal) => goal.toJson()).toList());
     await prefs.setString('goals', jsonData);
@@ -64,9 +88,14 @@ class _MainPageState extends State<MainPage> {
 
   void addGoal(String name, Color color) {
     setState(() {
-      goals.add(Goal(name: name, color: color, tasks: []));
+      goals.add(Goal(
+          name: name,
+          color: color,
+          tasks: [],
+          isSynchronized: false,
+          lastUpdated: DateTime.fromMillisecondsSinceEpoch(0)));
     });
-    _saveGoals();
+    _saveGoalsInSharedPrefs();
   }
 
   void editGoal(Goal goal, String newName, Color newColor) {
@@ -74,88 +103,256 @@ class _MainPageState extends State<MainPage> {
       goal.name = newName;
       goal.color = newColor;
     });
-    _saveGoals();
+    _saveGoalsInSharedPrefs();
+    if(goal.isSynchronized) {
+      MongoDBService.saveGoalToMongoDB(goal);
+    }
+
   }
 
   void deleteGoal(Goal goal) {
     setState(() {
       goals.remove(goal);
     });
-    _saveGoals();
+    _saveGoalsInSharedPrefs();
   }
 
   void refreshGoals() {
     setState(() {});
-    _saveGoals();
+    _saveGoalsInSharedPrefs();
   }
 
-  // List<Goal> getFilteredGoals() {
-  //   if (selectedColors.isEmpty) return goals;
-  //   return goals.where((goal) => selectedColors.contains(goal.color)).toList();
-  // }
+  void debugGoals(List<Goal> goals) {
+    for (var goal in goals) {
+      bool isCompleted = isGoalCompleted(goal);
+      debugPrint('Goal: name=${goal.name}, color=${goal.color}, completed=${isCompleted}');
+    }
+  }
+
   List<Goal> getFilteredGoals() {
-    List<Goal> filteredGoals = selectedColors.isEmpty ? goals : goals.where((goal) => selectedColors.contains(goal.color)).toList();
+    print("--COLORS");
+    debugPrint(selectedColors.toString());
+    print("--ALL");
+    debugGoals(goals);
+
+    List<Goal> filteredGoals = selectedColors.isEmpty
+        ? goals
+        : goals.where((goal) => selectedColors.contains(goal.color)).toList();
+
+    print("--FILERED");
+    debugGoals(filteredGoals);
 
     // Hide completed goals if 'showCompletedGoals' is false
     if (!showCompletedGoals) {
-      filteredGoals = filteredGoals.where((goal) => !isGoalCompleted(goal)).toList();
+      filteredGoals =
+          filteredGoals.where((goal) => !isGoalCompleted(goal)).toList();
     }
+    print("--COMPLETED");
+    debugGoals(filteredGoals);
+    print("--");
 
     return filteredGoals;
   }
 
   bool isGoalCompleted(Goal goal) {
-    if (goal.tasks.isEmpty) return false; // A goal with no tasks is not considered completed
-    return goal.tasks.every((task) => task.isCompleted); // All tasks must be completed
+    if (goal.tasks.isEmpty)
+      return false; // A goal with no tasks is not considered completed
+    return goal.tasks
+        .every((task) => task.isCompleted); // All tasks must be completed
   }
 
-  Future<void> exportGoals() async {
-    String jsonData = jsonEncode(goals.map((goal) => goal.toJson()).toList());
-    Share.share(jsonData, subject: 'Check out my life goals!');
-  }
 
-  Future<void> importGoals() async {
-    FilePickerResult? result = await FilePicker.platform.pickFiles(type: FileType.custom, allowedExtensions: ['txt','json']);
-
-    if (result != null) {
-      File file = File(result.files.single.path!);
-      String fileContent = await file.readAsString();
-
-      // Parse JSON and show a dialog for replacing or adding
-      List<dynamic> jsonData = jsonDecode(fileContent);
+    Future<void> showExportDialog(BuildContext context) async {
       showDialog(
         context: context,
-        builder: (context) {
+        builder: (BuildContext context) {
           return AlertDialog(
-            title: const Text('Import Goals'),
-            content: const Text('Do you want to replace current goals or add them?'),
+            title: Text('Export Goals'),
+            content: Text('Would you like to export all goals or only the displayed goals?'),
             actions: [
               TextButton(
                 onPressed: () {
-                  setState(() {
-                    goals = jsonData.map((goalJson) => Goal.fromJson(goalJson)).toList();
-                  });
-                  _saveGoals();
                   Navigator.pop(context);
+                  exportGoals(goals); // Export all goals
                 },
-                child: const Text('Replace'),
+                child: Text('All Goals'),
               ),
               TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('Cancel'),
+                onPressed: () {
+                  Navigator.pop(context);
+                  exportGoals(getFilteredGoals()); // Export displayed goals only
+                },
+                child: Text('Displayed Goals'),
               ),
             ],
           );
         },
       );
     }
+
+  Future<void> exportGoals(List<Goal> goals) async {
+    String jsonData = jsonEncode(goals.map((goal) => goal.toJson()).toList());
+    Share.share(jsonData, subject: 'Check out my life goals!');
   }
+
+  // Future<void> exportGoals() async {
+  //   String jsonData = jsonEncode(goals.map((goal) => goal.toJson()).toList());
+  //   Share.share(jsonData, subject: 'Check out my life goals!');
+  // }
+
+  //
+  // Future<void> _syncAllGoals() async {
+  //   for (var goal in goals) {
+  //     await MongoDBService.saveGoal(goal.toJson()); // Convert each goal to JSON format and save it
+  //   }
+  //   ScaffoldMessenger.of(context).showSnackBar(
+  //     SnackBar(content: Text('All goals synced to MongoDB')),
+  //   );
+  // }
+  String _currentGoalName = '';
+  double _progressValue = 0.0;
+  Widget _buildProgressDialog(List<bool> syncStatus) {
+    return AlertDialog(
+      title: Text('Syncing Goals'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          LinearProgressIndicator(
+            value: syncStatus.where((status) => status).length / goals.length,
+          ),
+          SizedBox(height: 16),
+          SizedBox(
+            height: 200, // Set a fixed height for the ListView
+            width: double.infinity, // Ensure it takes up available width
+            child: ListView.builder(
+              itemCount: goals.length,
+              itemBuilder: (context, index) {
+                return ListTile(
+                  leading: syncStatus[index]
+                      ? Icon(Icons.check, color: Colors.green)
+                      : CircularProgressIndicator(strokeWidth: 2.0),
+                  title: Text(goals[index].name),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: Text('Cancel'),
+        ),
+      ],
+    );
+  }
+
+
+  Future<void> _syncAllGoals() async {
+    List<bool> syncStatus = List.filled(goals.length, false);
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => _buildProgressDialog(syncStatus),
+    );
+
+    for (var i = 0; i < goals.length; i++) {
+      var goal = goals[i];
+      setState(() {
+        _currentGoalName = goal.name;
+      });
+
+      await MongoDBService.saveGoal(goal.toJson());
+
+      // Update sync status for the current goal
+      setState(() {
+        syncStatus[i] = true;
+      });
+    }
+
+    Navigator.pop(context); // Close the dialog after all goals are synced
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('All goals synced to MongoDB')),
+    );
+  }
+
+
+  Future<void> _fetchGoalNamesFromMongoDB() async {
+    // Fetch all goal names from MongoDB via the service
+    var goalNames = await MongoDBService.getAllGoalNames();
+    // Filter out existing local goals
+    final localNames = goals.map((g) => g.name);
+    goalNames =
+        goalNames.where((goalName) => !localNames.contains(goalName)).toList();
+    // Show the multi-selection dialog
+    final selectedGoals = await showDialog<List<String>>(
+      context: context,
+      builder: (BuildContext context) {
+        return GoalSelectionDialog(goalNames: goalNames);
+      },
+    );
+    await _importSelectedGoals(selectedGoals!);
+  }
+
+  Future<void> _importSelectedGoals(List<String> selectedGoals) async {
+    // Fetch the selected goals from MongoDB
+    final goals = await MongoDBService.getGoalsByNames(selectedGoals);
+
+    // Insert each goal locally
+    for (var goal in goals) {
+      await _insertGoalLocally(goal);
+    }
+    await _saveGoalsInSharedPrefs();
+    // refreshGoals();
+  }
+
+  // TODO:
+  // why do I feel there are two methods ?
+  Future<void> _insertGoalLocally(Map<String, dynamic> remoteGoalData) async {
+    print(remoteGoalData.toString());
+    Goal goal = Goal(
+      name: remoteGoalData['goalName'],
+      color: remoteGoalData.containsKey('color') ? decodeColorFromJson(remoteGoalData['color']) : const Color(0xFFBBDEFB),
+      // Icy Sky Blue,
+      tasks: List<Task>.from(
+          remoteGoalData['tasks'].map((taskData) => Task.fromJson(taskData))),
+      isSynchronized: true,
+      lastUpdated: DateTime.parse(remoteGoalData['lastUpdated']),
+    );
+
+    setState(() {
+      goals.add(goal);
+    });
+
+    // _saveGoalsInSharedPrefs();
+  }
+
+
+  void _cleanGoals() {
+    // Log all current goals
+    for (var goal in goals) {
+      debugPrint(goal.toJson().toString());
+    }
+
+    setState(() {
+      goals.removeWhere((goal) => goal.name.isEmpty || goal.name == null || goal.color == null);
+      selectedColors = {};
+    });
+  }
+
+// Usage example:
+  Future<void> addGoals(List<Goal> goalsToAdd) async {
+    setState(() {
+      goals.addAll(goalsToAdd);
+    });
+    await _saveGoalsInSharedPrefs();
+  }
+
   @override
   Widget build(BuildContext context) {
     List<Goal> filteredGoals = getFilteredGoals();
-    List<Color> visibleGoalColors = showCompletedGoals
-        ? goals.map((goal) => goal.color).toSet().toList()  // Show all goal colors if completed goals are visible
-        : goals.where((goal) => !isGoalCompleted(goal)).map((goal) => goal.color).toSet().toList();  // Show only non-completed goal colors
+    List<Color> visibleGoalColors = visibleColors(); // Show only non-completed goal colors
 
     return Scaffold(
       appBar: AppBar(
@@ -175,6 +372,7 @@ class _MainPageState extends State<MainPage> {
                         selectedColors.add(color);
                       }
                     });
+                    _saveSelectedColors();
                   },
                   child: Container(
                     margin: const EdgeInsets.symmetric(horizontal: 4.0),
@@ -218,13 +416,14 @@ class _MainPageState extends State<MainPage> {
             // If moving down, find the target index in the original list for the newIndex in filtered list
             else {
               final newFilteredGoal = filteredGoals[newIndex];
-              final originalNewIndex = goals.indexOf(newFilteredGoal) + 1; // Insert after in original
+              final originalNewIndex = goals.indexOf(newFilteredGoal) +
+                  1; // Insert after in original
               // Move the goal in the original list
               goals.removeAt(originalOldIndex);
               goals.insert(originalNewIndex, movedGoal);
             }
           });
-          _saveGoals(); // Save reordered goals
+          _saveGoalsInSharedPrefs(); // Save reordered goals
         },
         children: List.generate(filteredGoals.length, (index) {
           Goal goal = filteredGoals[index];
@@ -241,7 +440,8 @@ class _MainPageState extends State<MainPage> {
             ),
             child: GoalCard(
               goal: goal,
-              onEditGoal: (newName, newColor) => editGoal(goal, newName, newColor),
+              onEditGoal: (newName, newColor) =>
+                  editGoal(goal, newName, newColor),
               onDeleteGoal: () => deleteGoal(goal),
             ),
           );
@@ -251,14 +451,48 @@ class _MainPageState extends State<MainPage> {
         mainAxisAlignment: MainAxisAlignment.end,
         children: [
           if (showImportExportButtons) ...[
+            // FloatingActionButton(
+            //   onPressed: _loadGoals, // New button
+            //   tooltip: 'Refresh',
+            //   child: Icon(Icons.refresh), // Icon for the new button
+            // ),
             FloatingActionButton(
-              onPressed: () => importGoals(),
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => SettingsPage()),
+                );
+              },
+              child: Icon(Icons.settings),
+              tooltip: 'Settings',
+            ),
+            SizedBox(height: 16), // Space between buttons
+            FloatingActionButton(
+              onPressed: _cleanGoals,
+              tooltip: 'Clean Goals',
+              child: Icon(Icons.cleaning_services),
+            ),
+            SizedBox(height: 16), // Space between buttons
+            FloatingActionButton(
+              onPressed: _syncAllGoals,
+              child: Icon(Icons.sync),
+              tooltip: 'Sync All Goals',
+            ),
+            SizedBox(height: 16), // Space between buttons
+            FloatingActionButton(
+              onPressed: _fetchGoalNamesFromMongoDB, // New button
+              tooltip: 'Import Goals',
+              child: Icon(Icons.cloud_download), // Icon for the new button
+            ),
+            SizedBox(height: 16), // Space between buttons
+            FloatingActionButton(
+              onPressed: () => importGoals(context, addGoals),
               child: Icon(Icons.download),
               tooltip: 'Import Goals',
             ),
             SizedBox(height: 16), // Space between buttons
             FloatingActionButton(
-              onPressed: () => exportGoals(),
+              onPressed: () => showExportDialog(context),
               child: Icon(Icons.upload_file),
               tooltip: 'Export Goals',
             ),
@@ -269,8 +503,11 @@ class _MainPageState extends State<MainPage> {
                   showCompletedGoals = !showCompletedGoals;
                 });
               },
-              child: Icon(showCompletedGoals ? Icons.visibility_off : Icons.visibility),
-              tooltip: showCompletedGoals ? 'Hide Completed Goals' : 'Show Completed Goals',
+              child: Icon(
+                  showCompletedGoals ? Icons.visibility_off : Icons.visibility),
+              tooltip: showCompletedGoals
+                  ? 'Hide Completed Goals'
+                  : 'Show Completed Goals',
             ),
             SizedBox(height: 16), // Space between buttons
           ],
@@ -291,6 +528,19 @@ class _MainPageState extends State<MainPage> {
     );
   }
 
+  List<Color> visibleColors() {
+       List<Color> visibleGoalColors = showCompletedGoals
+        ? goals
+            .map((goal) => goal.color)
+            .toSet()
+            .toList() // Show all goal colors if completed goals are visible
+        : goals
+            .where((goal) => !isGoalCompleted(goal))
+            .map((goal) => goal.color)
+            .toSet()
+            .toList(); // Show only non-completed goal colors
+    return visibleGoalColors;
+  }
 }
 
 void main() {

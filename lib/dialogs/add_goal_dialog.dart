@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../utils/colors.dart';
+
 class ColorPaletteState {
   static String selectedPalette = 'Pastel'; // Default to 'Pastel'
 }
@@ -18,87 +20,38 @@ void showGoalDialog({
   required Function(String, Color) onSave,
   bool isEdit = false,
 }) {
-  // Define the color palettes as constants
-  const Map<String, List<Color>> colorPalettes = {
-    'Pastel': [
-      Color(0xFFFFC1CC), // Pastel Pink
-      Color(0xFFFFD1A4), // Pastel Orange
-      Color(0xFFFFF3B0), // Pastel Yellow
-      Color(0xFFA7FFEB), // Pastel Mint
-      Color(0xFFAECBFA), // Pastel Blue
-      Color(0xFFD7B4F3), // Pastel Purple
-      Color(0xFFFABAD7), // Pastel Coral
-      Color(0xFFFCE4EC), // Pastel Blush
-      Color(0xFFE1F5FE), // Pastel Sky Blue
-      Color(0xFFD1F5A4), // Pastel Green
-    ],
-    'Vibrant': [
-      Color(0xFFFF0000), // Red
-      Color(0xFFFFA500), // Orange
-      Color(0xFFFFFF00), // Yellow
-      Color(0xFF008000), // Green
-      Color(0xFF0000FF), // Blue
-      Color(0xFF800080), // Purple
-      Color(0xFFFFC0CB), // Pink
-      Color(0xFF00FFFF), // Cyan
-      Color(0xFFFFD700), // Gold
-      Color(0xFFFF4500), // Orange Red
-    ],
-    'Icy': [
-      Color(0xFFE0F7FA), // Icy Blue
-      Color(0xFFD1C4E9), // Icy Lavender
-      Color(0xFFB2EBF2), // Icy Teal
-      Color(0xFFE1BEE7), // Icy Lilac
-      Color(0xFFBBDEFB), // Icy Sky Blue
-      Color(0xFFB3E5FC), // Icy Light Blue
-      Color(0xFFE3F2FD), // Icy Ice Blue
-      Color(0xFFBBDEFB), // Icy Soft Blue
-      Color(0xFFE0E0E0), // Icy Grey
-      Color(0xFFE1F5FE), // Icy Pale Blue
-    ],
-    'Autumn': [
-      Color(0xFFFFB74D), // Autumn Orange
-      Color(0xFFFF7043), // Autumn Red
-      Color(0xFFFFCA28), // Autumn Yellow
-      Color(0xFF8D6E63), // Autumn Brown
-      Color(0xFF6D4C41), // Autumn Dark Brown
-      Color(0xFF3E2723), // Autumn Deep Brown
-      Color(0xFFD7CCC8), // Autumn Light Brown
-      Color(0xFFFFAB91), // Autumn Soft Orange
-      Color(0xFF6F9EAE), // Autumn Teal
-      Color(0xFFE6B0AA), // Autumn Soft Red
-    ],
-    'Space': [
-      Color(0xFF000000), // Very Dark Blue (Black)
-      Color(0xFF1A1A2E), // Dark Blue
-      Color(0xFF16213E), // Midnight Blue
-      Color(0xFF0F3460), // Dark Blue
-      Color(0xFF00A3E0), // Bright Blue
-      Color(0xFF007BFF), // Standard Blue
-      Color(0xFF4ECDC4), // Light Blue
-      Color(0xFFF9ED69), // Pale Yellow
-      Color(0xFFF5D547), // Yellow
-      Color(0xFFFBAA32), // Light Orange (to represent stars)
-    ],
-  };
 
-  // Set initial color to the first color in the current palette
-  Color selectedColor = initialColor ?? colorPalettes[ColorPaletteState.selectedPalette]![0];
+  // Print initial color
+  print("My Color: $initialColor");
 
   // Use the current selected palette
   String selectedPalette = ColorPaletteState.selectedPalette;
+
+  // Set initial color to the first color in the current palette
+  Color selectedColor = initialColor ?? colorPalettes[selectedPalette]![0];
 
   showDialog(
     context: context,
     builder: (context) {
       return StatefulBuilder(
         builder: (context, setState) {
-          List<Color> currentPalette = colorPalettes[selectedPalette]!;
 
+          List<Color>? currentPalette = colorPalettes[selectedPalette]!;
           // Reset selectedColor if it's not in the currentPalette
           if (!currentPalette.contains(selectedColor)) {
-            selectedColor = currentPalette[0]; // Reset to first color of the new palette
+            String? paletteName = findPaletteContainingColor(colorPalettes, selectedColor);
+            if(paletteName == null) {
+              setState(()  {
+                selectedPalette = colorPalettes.entries.first.key;
+              });
+            } else {
+              setState(()  {
+                selectedPalette = paletteName;
+              });
+            }
+            print("Palette $paletteName > $currentPalette");
           }
+
 
           return AlertDialog(
             title: Text(isEdit ? 'Edit Goal' : 'Add New Goal'),
@@ -124,7 +77,8 @@ void showGoalDialog({
                   onChanged: (value) {
                     setState(() {
                       selectedPalette = value!;
-                      ColorPaletteState.selectedPalette = selectedPalette; // Update the global state
+                      // Update the global state
+                      ColorPaletteState.selectedPalette = selectedPalette;
                       // Reset selected color to the first color of the new palette
                       selectedColor = colorPalettes[selectedPalette]![0];
                     });
@@ -133,7 +87,7 @@ void showGoalDialog({
                 SizedBox(height: 10),
                 DropdownButton<Color>(
                   value: selectedColor,
-                  items: currentPalette.map((color) {
+                  items: colorPalettes[selectedPalette]!.map((color) {
                     return DropdownMenuItem<Color>(
                       value: color,
                       child: Container(

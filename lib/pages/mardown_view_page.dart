@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:share_plus/share_plus.dart'; // Import share_plus for sharing
-import 'goal.dart';
+import '../goal.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 
 class MarkdownViewPage extends StatelessWidget {

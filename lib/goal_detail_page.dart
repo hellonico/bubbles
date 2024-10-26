@@ -81,12 +81,15 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
       MaterialPageRoute(
         builder: (context) => EditTaskPage(
           task: task,
-          onSave: (updatedDescription) {
+          onSave: (newDescription) {
             setState(() {
-              task.description = updatedDescription;
+              task.description = newDescription; // Update the task description
             });
-            _saveTaskToLocal(task);
-            widget.refreshGoals();
+          },
+          onNameChange: (newName) {
+            setState(() {
+              task.title = newName; // Update the task name
+            });
           },
         ),
       ),

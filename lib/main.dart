@@ -46,8 +46,15 @@ class _MainPageState extends State<MainPage> {
   void initState() {
     super.initState();
     MongoDBService.init();
-    _loadGoals();
-    _loadSelectedColors();
+    loadApp();
+  }
+
+  void loadApp() async {
+    List<Goal> _goals = await AppSettings().loadGoals();
+    setState(() {
+      goals = _goals;
+    });
+    await _loadSelectedColors();
   }
 
   Future<void> _loadSelectedColors() async {
@@ -69,16 +76,6 @@ class _MainPageState extends State<MainPage> {
     await prefs.setString('colors', jsonData);
   }
 
-  Future<void> _loadGoals() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    String? goalsData = prefs.getString('goals');
-    if (goalsData != null) {
-      List<dynamic> jsonData = jsonDecode(goalsData);
-      setState(() {
-        goals = jsonData.map((goalJson) => Goal.fromJson(goalJson)).toList();
-      });
-    }
-  }
 
   Future<void> _saveGoalsInSharedPrefs() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();

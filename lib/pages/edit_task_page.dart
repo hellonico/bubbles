@@ -1,16 +1,23 @@
+import 'package:bubbles/app.dart';
 import 'package:flutter/material.dart';
-import '../goal.dart'; // Import your Task model
+import 'package:shared_preferences/shared_preferences.dart';
+import '../goal.dart';
 
 class EditTaskPage extends StatefulWidget {
   final Task task;
   final ValueChanged<String> onSave;
-  final ValueChanged<String> onNameChange; // Callback for task name change
+  final ValueChanged<String> onNameChange;
+  // final List<Goal> goals; // Pass the list of available goals
+  final Function(Task, Goal) onGoalChange; // Callback for changing the task's goal
 
   const EditTaskPage({
     Key? key,
     required this.task,
+    required Goal goal,
     required this.onSave,
     required this.onNameChange,
+    // required this.goals,
+    required this.onGoalChange,
   }) : super(key: key);
 
   @override
@@ -20,13 +27,13 @@ class EditTaskPage extends StatefulWidget {
 class _EditTaskPageState extends State<EditTaskPage> {
   late TextEditingController _descriptionController;
   late TextEditingController _titleController;
-  bool _isEditingTitle = false; // Track if the task name is being edited
+  bool _isEditingTitle = false;
 
   @override
   void initState() {
     super.initState();
     _descriptionController = TextEditingController(text: widget.task.description ?? '');
-    _titleController = TextEditingController(text: widget.task.title); // Controller for task name
+    _titleController = TextEditingController(text: widget.task.title);
   }
 
   @override
@@ -34,6 +41,46 @@ class _EditTaskPageState extends State<EditTaskPage> {
     _descriptionController.dispose();
     _titleController.dispose();
     super.dispose();
+  }
+
+  // Method to show the goal selection dialog
+  Future<void> _showGoalSelectionDialog() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    List<Goal> goals = await AppSettings().loadGoals();
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Select New Goal for Task'),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: ListView.builder(
+              shrinkWrap: true,
+              itemCount: goals.length,
+              itemBuilder: (context, index) {
+                final goal = goals[index];
+                return ListTile(
+                  title: Text(goal.name ?? 'Unnamed Goal'),
+                  trailing: goal == goal ? Icon(Icons.check) : null,
+                  onTap: () {
+                    // Update the task's goal when a new goal is selected
+                    widget.onGoalChange(widget.task, goal);
+                    Navigator.of(context).pop();
+                  },
+                );
+              },
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text('Cancel'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   @override
@@ -55,19 +102,17 @@ class _EditTaskPageState extends State<EditTaskPage> {
             IconButton(
               icon: Icon(Icons.check),
               onPressed: () {
-                // Save the new name
                 widget.onNameChange(_titleController.text);
                 setState(() {
-                  _isEditingTitle = false; // Exit editing mode
+                  _isEditingTitle = false;
                 });
               },
             ),
             IconButton(
               icon: Icon(Icons.cancel),
               onPressed: () {
-                // Cancel editing
                 setState(() {
-                  _isEditingTitle = false; // Exit editing mode without saving
+                  _isEditingTitle = false;
                 });
               },
             ),
@@ -76,16 +121,16 @@ class _EditTaskPageState extends State<EditTaskPage> {
             : GestureDetector(
           onTap: () {
             setState(() {
-              _isEditingTitle = true; // Switch to editing mode
+              _isEditingTitle = true;
             });
           },
-          child: Text(widget.task.title), // Display task name when not editing
+          child: Text(widget.task.title),
         ),
         leading: IconButton(
           icon: Icon(Icons.arrow_back),
           onPressed: () {
-            widget.onSave(_descriptionController.text); // Save description before going back
-            Navigator.of(context).pop(); // Go back
+            widget.onSave(_descriptionController.text);
+            Navigator.of(context).pop();
           },
         ),
       ),
@@ -97,7 +142,7 @@ class _EditTaskPageState extends State<EditTaskPage> {
               child: TextFormField(
                 controller: _descriptionController,
                 maxLines: null,
-                expands: true, // Allow the text field to expand
+                expands: true,
                 decoration: InputDecoration(
                   labelText: 'Task Description',
                   border: OutlineInputBorder(),
@@ -106,6 +151,11 @@ class _EditTaskPageState extends State<EditTaskPage> {
             ),
           ],
         ),
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: _showGoalSelectionDialog,
+        child: Icon(Icons.swap_horiz),
+        tooltip: 'Move Task to Another Goal',
       ),
     );
   }

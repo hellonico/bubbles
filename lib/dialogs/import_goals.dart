@@ -8,7 +8,7 @@ import '../goal.dart';
 
 Future<void> importGoals(BuildContext context, void Function(List<Goal>) addGoalsCallback) async {
   FilePickerResult? result = await FilePicker.platform
-      .pickFiles(type: FileType.custom, allowedExtensions: ['txt', 'json']);
+      .pickFiles(type: FileType.custom, allowedExtensions: ['json', 'txt']);
 
   if (result != null) {
     File file = File(result.files.single.path!);

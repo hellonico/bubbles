@@ -16,7 +16,7 @@ import 'mardown_view_page.dart';
 import '../mongodb_service.dart';
 
 class GoalDetailPage extends StatefulWidget {
-  final Goal goal;
+  Goal goal;
   final VoidCallback refreshGoals;
 
   GoalDetailPage({required this.goal, required this.refreshGoals});
@@ -54,6 +54,25 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
         await syncGoalWithMongoDB(widget.goal); // Check for remote updates
         isSyncing = false;
       }
+    });
+  }
+
+  // onGoalChange function to update the task's goal
+  void _onGoalChange(Task task, Goal newGoal) {
+    setState(() {
+      // Remove the task from the current goal
+      widget.goal.tasks.remove(task);
+      syncGoalWithMongoDB(widget.goal);
+
+      // Add the task to the new goal
+      newGoal.tasks.add(task);
+      syncGoalWithMongoDB(newGoal);
+
+      widget.goal = newGoal;
+
+      widget.refreshGoals();
+      // MongoDBService.saveGoalToMongoDB(widget.goal);
+      // _syncWithDatabase();
     });
   }
 
@@ -189,6 +208,7 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (context) => EditTaskPage(
+          goal: widget.goal,
           task: task,
           onSave: (newDescription) {
             setState(() {
@@ -198,7 +218,9 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
               MongoDBService.saveGoalToMongoDB(widget.goal);
             }
           },
+          onGoalChange: _onGoalChange,
           onNameChange: (newName) {
+
             setState(() {
               task.title = newName; // Update the task name
             });

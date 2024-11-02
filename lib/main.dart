@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:bubbles/pages/settings_page.dart';
+import 'package:bubbles/pages/task_list_view_page.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart'; // For sharing files
@@ -76,7 +77,6 @@ class _MainPageState extends State<MainPage> {
     await prefs.setString('colors', jsonData);
   }
 
-
   Future<void> _saveGoalsInSharedPrefs() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     String jsonData = jsonEncode(goals.map((goal) => goal.toJson()).toList());
@@ -101,10 +101,9 @@ class _MainPageState extends State<MainPage> {
       goal.color = newColor;
     });
     _saveGoalsInSharedPrefs();
-    if(goal.isSynchronized) {
+    if (goal.isSynchronized) {
       MongoDBService.saveGoalToMongoDB(goal);
     }
-
   }
 
   void deleteGoal(Goal goal) {
@@ -119,11 +118,33 @@ class _MainPageState extends State<MainPage> {
     _saveGoalsInSharedPrefs();
   }
 
+  bool isGoalCompleted(Goal goal) {
+    if (goal.tasks.isEmpty)
+      return false; // A goal with no tasks is not considered completed
+    return goal.tasks
+        .every((task) => task.isCompleted); // All tasks must be completed
+  }
+
   void debugGoals(List<Goal> goals) {
     for (var goal in goals) {
       bool isCompleted = isGoalCompleted(goal);
-      debugPrint('Goal: name=${goal.name}, color=${goal.color}, completed=${isCompleted}');
+      debugPrint(
+          'Goal: name=${goal.name}, color=${goal.color}, completed=${isCompleted}');
     }
+  }
+
+  List<Color> visibleColors() {
+    List<Color> visibleGoalColors = showCompletedGoals
+        ? goals
+            .map((goal) => goal.color)
+            .toSet()
+            .toList() // Show all goal colors if completed goals are visible
+        : goals
+            .where((goal) => !isGoalCompleted(goal))
+            .map((goal) => goal.color)
+            .toSet()
+            .toList(); // Show only non-completed goal colors
+    return visibleGoalColors;
   }
 
   List<Goal> getFilteredGoals() {
@@ -151,45 +172,49 @@ class _MainPageState extends State<MainPage> {
     return filteredGoals;
   }
 
-  bool isGoalCompleted(Goal goal) {
-    if (goal.tasks.isEmpty)
-      return false; // A goal with no tasks is not considered completed
-    return goal.tasks
-        .every((task) => task.isCompleted); // All tasks must be completed
+  Future<void> showExportDialog(BuildContext context) async {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Export Goals'),
+          content: Text(
+              'Would you like to export all goals or only the displayed goals?'),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+                exportGoals(goals); // Export all goals
+              },
+              child: Text('All Goals'),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+                exportGoals(getFilteredGoals()); // Export displayed goals only
+              },
+              child: Text('Displayed Goals'),
+            ),
+          ],
+        );
+      },
+    );
   }
-
-
-    Future<void> showExportDialog(BuildContext context) async {
-      showDialog(
-        context: context,
-        builder: (BuildContext context) {
-          return AlertDialog(
-            title: Text('Export Goals'),
-            content: Text('Would you like to export all goals or only the displayed goals?'),
-            actions: [
-              TextButton(
-                onPressed: () {
-                  Navigator.pop(context);
-                  exportGoals(goals); // Export all goals
-                },
-                child: Text('All Goals'),
-              ),
-              TextButton(
-                onPressed: () {
-                  Navigator.pop(context);
-                  exportGoals(getFilteredGoals()); // Export displayed goals only
-                },
-                child: Text('Displayed Goals'),
-              ),
-            ],
-          );
-        },
-      );
-    }
 
   Future<void> exportGoals(List<Goal> goals) async {
     String jsonData = jsonEncode(goals.map((goal) => goal.toJson()).toList());
     Share.share(jsonData, subject: 'Check out my life goals!');
+  }
+
+  // Navigation to TaskListView when list is scrolled to the top
+  void _navigateToTaskListView() {
+    final selectedGoals = getFilteredGoals(); // Selected goals based on color
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => TaskListView(goals: selectedGoals),
+      ),
+    );
   }
 
   // Future<void> exportGoals() async {
@@ -208,6 +233,7 @@ class _MainPageState extends State<MainPage> {
   // }
   String _currentGoalName = '';
   double _progressValue = 0.0;
+
   Widget _buildProgressDialog(List<bool> syncStatus) {
     return AlertDialog(
       title: Text('Syncing Goals'),
@@ -244,7 +270,6 @@ class _MainPageState extends State<MainPage> {
     );
   }
 
-
   Future<void> _syncAllGoals() async {
     List<bool> syncStatus = List.filled(goals.length, false);
 
@@ -274,6 +299,40 @@ class _MainPageState extends State<MainPage> {
     );
   }
 
+  // TODO:
+  // why do I feel there are two methods ?
+  Future<void> _insertGoalLocally(Map<String, dynamic> remoteGoalData) async {
+    print(remoteGoalData.toString());
+    Goal goal = Goal(
+      name: remoteGoalData['goalName'],
+      color: remoteGoalData.containsKey('color')
+          ? decodeColorFromJson(remoteGoalData['color'])
+          : const Color(0xFFBBDEFB),
+      // Icy Sky Blue,
+      tasks: List<Task>.from(
+          remoteGoalData['tasks'].map((taskData) => Task.fromJson(taskData))),
+      isSynchronized: true,
+      lastUpdated: DateTime.parse(remoteGoalData['lastUpdated']),
+    );
+
+    setState(() {
+      goals.add(goal);
+    });
+
+    // _saveGoalsInSharedPrefs();
+  }
+
+  Future<void> _importSelectedGoals(List<String> selectedGoals) async {
+    // Fetch the selected goals from MongoDB
+    final goals = await MongoDBService.getGoalsByNames(selectedGoals);
+
+    // Insert each goal locally
+    for (var goal in goals) {
+      await _insertGoalLocally(goal);
+    }
+    await _saveGoalsInSharedPrefs();
+    // refreshGoals();
+  }
 
   Future<void> _fetchGoalNamesFromMongoDB() async {
     // Fetch all goal names from MongoDB via the service
@@ -292,40 +351,6 @@ class _MainPageState extends State<MainPage> {
     await _importSelectedGoals(selectedGoals!);
   }
 
-  Future<void> _importSelectedGoals(List<String> selectedGoals) async {
-    // Fetch the selected goals from MongoDB
-    final goals = await MongoDBService.getGoalsByNames(selectedGoals);
-
-    // Insert each goal locally
-    for (var goal in goals) {
-      await _insertGoalLocally(goal);
-    }
-    await _saveGoalsInSharedPrefs();
-    // refreshGoals();
-  }
-
-  // TODO:
-  // why do I feel there are two methods ?
-  Future<void> _insertGoalLocally(Map<String, dynamic> remoteGoalData) async {
-    print(remoteGoalData.toString());
-    Goal goal = Goal(
-      name: remoteGoalData['goalName'],
-      color: remoteGoalData.containsKey('color') ? decodeColorFromJson(remoteGoalData['color']) : const Color(0xFFBBDEFB),
-      // Icy Sky Blue,
-      tasks: List<Task>.from(
-          remoteGoalData['tasks'].map((taskData) => Task.fromJson(taskData))),
-      isSynchronized: true,
-      lastUpdated: DateTime.parse(remoteGoalData['lastUpdated']),
-    );
-
-    setState(() {
-      goals.add(goal);
-    });
-
-    // _saveGoalsInSharedPrefs();
-  }
-
-
   void _cleanGoals() {
     // Log all current goals
     for (var goal in goals) {
@@ -333,7 +358,8 @@ class _MainPageState extends State<MainPage> {
     }
 
     setState(() {
-      goals.removeWhere((goal) => goal.name.isEmpty || goal.name == null || goal.color == null);
+      goals.removeWhere((goal) =>
+          goal.name.isEmpty || goal.name == null || goal.color == null);
       selectedColors = {};
     });
   }
@@ -349,7 +375,8 @@ class _MainPageState extends State<MainPage> {
   @override
   Widget build(BuildContext context) {
     List<Goal> filteredGoals = getFilteredGoals();
-    List<Color> visibleGoalColors = visibleColors(); // Show only non-completed goal colors
+    List<Color> visibleGoalColors =
+        visibleColors(); // Show only non-completed goal colors
 
     return Scaffold(
       appBar: AppBar(
@@ -390,60 +417,70 @@ class _MainPageState extends State<MainPage> {
           ],
         ),
       ),
-      body: ReorderableListView(
-        onReorder: (int oldIndex, int newIndex) {
-          setState(() {
-            // If reordering down, we subtract 1 from the newIndex to account for the "before" position
-            if (newIndex > oldIndex) newIndex -= 1;
-
-            // Get the goal being reordered from the filtered list
-            final movedGoal = filteredGoals[oldIndex];
-
-            // Find the index of the goal in the original list
-            final originalOldIndex = goals.indexOf(movedGoal);
-
-            // If moving up, find the target index in the original list for the newIndex in filtered list
-            if (newIndex <= oldIndex) {
-              final newFilteredGoal = filteredGoals[newIndex];
-              final originalNewIndex = goals.indexOf(newFilteredGoal);
-              // Move the goal in the original list
-              goals.removeAt(originalOldIndex);
-              goals.insert(originalNewIndex, movedGoal);
+      body: NotificationListener<ScrollNotification>(
+          onNotification: (scrollNotification) {
+            print("notification");
+            if (scrollNotification is ScrollEndNotification &&
+                scrollNotification.metrics.pixels ==
+                    scrollNotification.metrics.maxScrollExtent) {
+              _navigateToTaskListView(); // Navigate when scrolled to top
             }
-            // If moving down, find the target index in the original list for the newIndex in filtered list
-            else {
-              final newFilteredGoal = filteredGoals[newIndex];
-              final originalNewIndex = goals.indexOf(newFilteredGoal) +
-                  1; // Insert after in original
-              // Move the goal in the original list
-              goals.removeAt(originalOldIndex);
-              goals.insert(originalNewIndex, movedGoal);
-            }
-          });
-          _saveGoalsInSharedPrefs(); // Save reordered goals
-        },
-        children: List.generate(filteredGoals.length, (index) {
-          Goal goal = filteredGoals[index];
-          return GestureDetector(
-            key: ValueKey(goal.name),
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => GoalDetailPage(
-                  goal: goal,
-                  refreshGoals: refreshGoals,
+            return true;
+          },
+          child: ReorderableListView(
+            onReorder: (int oldIndex, int newIndex) {
+              setState(() {
+                // If reordering down, we subtract 1 from the newIndex to account for the "before" position
+                if (newIndex > oldIndex) newIndex -= 1;
+
+                // Get the goal being reordered from the filtered list
+                final movedGoal = filteredGoals[oldIndex];
+
+                // Find the index of the goal in the original list
+                final originalOldIndex = goals.indexOf(movedGoal);
+
+                // If moving up, find the target index in the original list for the newIndex in filtered list
+                if (newIndex <= oldIndex) {
+                  final newFilteredGoal = filteredGoals[newIndex];
+                  final originalNewIndex = goals.indexOf(newFilteredGoal);
+                  // Move the goal in the original list
+                  goals.removeAt(originalOldIndex);
+                  goals.insert(originalNewIndex, movedGoal);
+                }
+                // If moving down, find the target index in the original list for the newIndex in filtered list
+                else {
+                  final newFilteredGoal = filteredGoals[newIndex];
+                  final originalNewIndex = goals.indexOf(newFilteredGoal) +
+                      1; // Insert after in original
+                  // Move the goal in the original list
+                  goals.removeAt(originalOldIndex);
+                  goals.insert(originalNewIndex, movedGoal);
+                }
+              });
+              _saveGoalsInSharedPrefs(); // Save reordered goals
+            },
+            children: List.generate(filteredGoals.length, (index) {
+              Goal goal = filteredGoals[index];
+              return GestureDetector(
+                key: ValueKey(goal.name),
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => GoalDetailPage(
+                      goal: goal,
+                      refreshGoals: refreshGoals,
+                    ),
+                  ),
                 ),
-              ),
-            ),
-            child: GoalCard(
-              goal: goal,
-              onEditGoal: (newName, newColor) =>
-                  editGoal(goal, newName, newColor),
-              onDeleteGoal: () => deleteGoal(goal),
-            ),
-          );
-        }),
-      ),
+                child: GoalCard(
+                  goal: goal,
+                  onEditGoal: (newName, newColor) =>
+                      editGoal(goal, newName, newColor),
+                  onDeleteGoal: () => deleteGoal(goal),
+                ),
+              );
+            }),
+          )),
       floatingActionButton: Column(
         mainAxisAlignment: MainAxisAlignment.end,
         children: [
@@ -523,20 +560,6 @@ class _MainPageState extends State<MainPage> {
         ],
       ),
     );
-  }
-
-  List<Color> visibleColors() {
-       List<Color> visibleGoalColors = showCompletedGoals
-        ? goals
-            .map((goal) => goal.color)
-            .toSet()
-            .toList() // Show all goal colors if completed goals are visible
-        : goals
-            .where((goal) => !isGoalCompleted(goal))
-            .map((goal) => goal.color)
-            .toSet()
-            .toList(); // Show only non-completed goal colors
-    return visibleGoalColors;
   }
 }
 

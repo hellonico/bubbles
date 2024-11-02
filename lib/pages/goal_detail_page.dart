@@ -206,29 +206,33 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
 
   void editTask(Task task) {
     Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (context) => EditTaskPage(
-          goal: widget.goal,
-          task: task,
-          onSave: (newDescription) {
-            setState(() {
-              task.description = newDescription; // Update the task description
-            });
-            if (widget.goal.isSynchronized) {
-              MongoDBService.saveGoalToMongoDB(widget.goal);
-            }
-          },
-          onGoalChange: _onGoalChange,
-          onNameChange: (newName) {
+      materialPageRoute(task),
+    );
+  }
 
-            setState(() {
-              task.title = newName; // Update the task name
-            });
-            if (widget.goal.isSynchronized) {
-              MongoDBService.saveGoalToMongoDB(widget.goal);
-            }
-          },
-        ),
+  MaterialPageRoute<dynamic> materialPageRoute(Task task) {
+    return MaterialPageRoute(
+      builder: (context) => EditTaskPage(
+        goal: widget.goal,
+        task: task,
+        onSave: (newDescription) {
+          setState(() {
+            task.description = newDescription; // Update the task description
+          });
+          if (widget.goal.isSynchronized) {
+            MongoDBService.saveGoalToMongoDB(widget.goal);
+          }
+        },
+        onGoalChange: _onGoalChange,
+        onNameChange: (newName) {
+
+          setState(() {
+            task.title = newName; // Update the task name
+          });
+          if (widget.goal.isSynchronized) {
+            MongoDBService.saveGoalToMongoDB(widget.goal);
+          }
+        },
       ),
     );
   }
@@ -258,13 +262,13 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
     bool showStarredTasks = appSettings.showStarredTasks;
     bool showNonCompletedTasks = appSettings.showNonCompletedTasks;
 
-    List<Task> filteredTasks = widget.goal.tasks.where((task) {
-      if ((showStarredTasks && !task.isStarred) ||
-          (showNonCompletedTasks && task.isCompleted)) {
-        return false;
-      }
-      return true; // Include task if it passes the filters
-    }).toList();
+    // List<Task> filteredTasks = widget.goal.tasks.where((task) {
+    //   if ((showStarredTasks && !task.isStarred) ||
+    //       (showNonCompletedTasks && task.isCompleted)) {
+    //     return false;
+    //   }
+    //   return true; // Include task if it passes the filters
+    // }).toList();
 
     return GestureDetector(
         onHorizontalDragEnd: (details) {

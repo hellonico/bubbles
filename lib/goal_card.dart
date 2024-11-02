@@ -32,11 +32,12 @@ class GoalCard extends StatelessWidget {
     String? lastCompletedDate;
     for (var task in goal.tasks) {
       if (task.isCompleted && task.completedAt != null) {
-        // Use DateFormat to format the date and time (hour)
-        lastCompletedDate = DateFormat('yyyy-MM-dd ha').format(task.completedAt!.toLocal());
+        lastCompletedDate = DateFormat('yyyyMMdd ha').format(task.completedAt!.toLocal());
       }
     }
 
+    // Format the last updated date
+    String formattedLastUpdated = DateFormat('yyyyMMdd ha').format(goal.lastUpdated);
 
     return Dismissible(
       key: Key(goal.name),
@@ -104,20 +105,32 @@ class GoalCard extends StatelessWidget {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Text(
-                      goal.name,
-                      style: TextStyle(
-                        // fontFamily: "Verdana",
-                        color: Colors.black,
-                        // fontWeight: progress < 1.0 ? FontWeight.bold : FontWeight.normal, // Bold if progress < 100%
-                        fontSize: 20,
-                      ),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          goal.name,
+                          style: TextStyle(
+                            color: Colors.black,
+                            fontSize: 20,
+                          ),
+                        ),
+                        if (goal.isSynchronized) // Show connected icon if synchronized
+                          Padding(
+                            padding: const EdgeInsets.only(left: 8.0),
+                            child: Icon(
+                              Icons.cloud_done,
+                              color: Colors.blueAccent,
+                              size: 20,
+                            ),
+                          ),
+                      ],
                     ),
                     if (progress >= 1.0)
                       Icon(Icons.check_circle_outline_rounded),
                     if (lastCompletedDate != null) // Show last completed date if exists
                       Text(
-                        'Last updated: '+goal.lastUpdated.toIso8601String(),
+                        'Last updated: $formattedLastUpdated',
                         style: TextStyle(
                           color: Colors.black,
                           fontSize: 14,

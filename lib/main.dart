@@ -285,8 +285,10 @@ class _MainPageState extends State<MainPage> {
         _currentGoalName = goal.name;
       });
 
-      await MongoDBService.saveGoal(goal.toJson());
 
+      await MongoDBService.saveGoalToMongoDB(goal);
+
+      print("Goal ${goal.name} saved.");
       // Update sync status for the current goal
       setState(() {
         syncStatus[i] = true;
@@ -295,7 +297,7 @@ class _MainPageState extends State<MainPage> {
 
     Navigator.pop(context); // Close the dialog after all goals are synced
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('All goals synced to MongoDB')),
+      SnackBar(content: Text('All goals [${goals.length}] synced to MongoDB')),
     );
   }
 

@@ -14,6 +14,7 @@ class MongoDBService {
   // Initialize the MongoDB service with a URL stored in preferences or use a default
   static Future<void> init() async {
     String dbUrl = await getMongoDbUrl();
+    print("Connecting to $dbUrl");
     db = await Db.create(dbUrl);
     await db.open();
     collection = db.collection('bubbles');
@@ -60,9 +61,6 @@ class MongoDBService {
 
 
   static Future<void> saveGoalToMongoDB(Goal goal) async {
-    if(!db.isConnected) {
-      init();
-    }
     Map<String, dynamic> goalData = {
       'goalName': goal.name,
       'color': encodeColorToJson(goal.color),

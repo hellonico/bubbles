@@ -134,17 +134,25 @@ class _EditTaskPageState extends State<EditTaskPage> {
             ),
           ],
         )
-            : Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(widget.task.title), // Task title as main title
-            Text(
-              widget.goal.name ?? 'Unnamed Goal', // Goal name as subtitle
-              style: TextStyle(fontSize: 14, color: Colors.black), // Subtitle style
-            ),
-          ],
-        ),
-        leadingWidth: 56,
+            : GestureDetector(
+          onTap: () {
+    setState(() {
+    _isEditingTitle = true;
+    });
+    },
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(widget.task.title), // Task title as main title
+          Text(
+            widget.goal.name ?? 'Unnamed Goal', // Goal name as subtitle
+            style: TextStyle(fontSize: 14, color: Colors.black), // Subtitle style
+          ),
+        ],
+      ),
+    ),
+
+    leadingWidth: 56,
         actions: [
           IconButton(
             icon: Icon(Icons.arrow_back),

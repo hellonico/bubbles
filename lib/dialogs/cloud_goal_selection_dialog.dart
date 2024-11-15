@@ -12,6 +12,13 @@ class GoalSelectionDialog extends StatefulWidget {
 class _GoalSelectionDialogState extends State<GoalSelectionDialog> {
   Set<String> selectedGoals = {};
 
+  // Function to select all goals
+  void selectAllGoals() {
+    setState(() {
+      selectedGoals = Set.from(widget.goalNames); // Select all goals
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
@@ -38,18 +45,27 @@ class _GoalSelectionDialogState extends State<GoalSelectionDialog> {
       actions: [
         TextButton(
           onPressed: () {
-            // Handle import action here
-            Navigator.of(context).pop(selectedGoals.toList());
-          },
-          child: Text('Import'),
-        ),
-        TextButton(
-          onPressed: () {
             // Handle cancel action here
             Navigator.of(context).pop();
           },
           child: Text('Cancel'),
         ),
+        TextButton(
+          onPressed: () {
+            // Handle import all action here
+            Navigator.of(context).pop(selectedGoals.toList());
+            selectAllGoals();  // Select all goals
+          },
+          child: Text('Select All'),
+        ),
+        TextButton(
+          onPressed: () {
+            // Handle import action here
+            Navigator.of(context).pop(selectedGoals.toList());
+          },
+          child: Text('Import'),
+        ),
+
       ],
     );
   }
